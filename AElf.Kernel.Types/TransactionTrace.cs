@@ -38,6 +38,10 @@ namespace AElf.Kernel
 
         public Hash GetSummarizedStateHash()
         {
+            if (!IsSuccessful())
+            {
+                return Hash.Default;
+            }
             if (InlineTraces.Count == 0)
             {
                 return StateHash ?? Hash.Default;

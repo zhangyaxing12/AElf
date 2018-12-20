@@ -277,7 +277,7 @@ namespace AElf.Synchronization.BlockExecution
                 {
                     res.Status = Status.Failed;
                     res.RetVal = ByteString.CopyFromUtf8(trace.StdErr);
-                    res.StateHash = trace.GetSummarizedStateHash();
+                    res.StateHash = Hash.Default;
                     if (!cancellationTokenSource.IsCancellationRequested)
                     {
                         _logger?.Error($"Transaction execute failed. TransactionId: {res.TransactionId.ToHex()}, " +
