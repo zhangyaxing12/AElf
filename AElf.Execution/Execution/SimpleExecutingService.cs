@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using AElf.Kernel.Managers;
 using AElf.Kernel.Storages;
 using AElf.Types.CSharp;
 using Google.Protobuf;
+using NLog;
 
 namespace AElf.Execution.Execution
 {
@@ -22,6 +24,7 @@ namespace AElf.Execution.Execution
         private ITransactionTraceManager _transactionTraceManager;
         private IChainContextService _chainContextService;
         private IStateManager _stateManager;
+        private ILogger _logger;
 
         public SimpleExecutingService(ISmartContractService smartContractService,
             ITransactionTraceManager transactionTraceManager, IStateManager stateManager,
@@ -31,6 +34,7 @@ namespace AElf.Execution.Execution
             _transactionTraceManager = transactionTraceManager;
             _chainContextService = chainContextService;
             _stateManager = stateManager;
+            _logger = LogManager.GetLogger(nameof(SimpleExecutingService));
         }
 
         public async Task<List<TransactionTrace>> ExecuteAsync(List<Transaction> transactions, Hash chainId,
@@ -42,6 +46,9 @@ namespace AElf.Execution.Execution
             var traces = new List<TransactionTrace>();
             foreach (var transaction in transactions)
             {
+                var stopWatch = new Stopwatch();
+                stopWatch.Start();
+
                 var trace = await ExecuteOneAsync(0, transaction, chainId, chainContext, stateCache, currentBlockTime,
                     cancellationToken, skipFee);
                 if (!trace.IsSuccessful())
@@ -57,6 +64,9 @@ namespace AElf.Execution.Execution
                     await _transactionTraceManager.AddTransactionTraceAsync(trace, disambiguationHash);
                 }
 
+                stopWatch.Stop();
+
+                _logger.Trace($"##### perf of transaction, {transaction.MethodName}, {stopWatch.ElapsedMilliseconds} ms.");
 
                 traces.Add(trace);
 
