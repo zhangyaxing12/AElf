@@ -18,9 +18,9 @@ namespace AElf.Contracts.Token
         }
 
         [Fact]
-        public void Deploy_Contract()
+        public void Deploy_TokenContract()
         {
-            var contractAddress = _executor.DeployContractTest(_contractCode, (ulong) new Random().Next()).Result;
+            var contractAddress = _executor.DeployContractTest(_contractCode, (ulong)2).Result;
             contractAddress.ShouldNotBe(null);
         }
     }

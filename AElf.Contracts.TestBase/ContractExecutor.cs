@@ -48,7 +48,7 @@ namespace AElf.Contracts.TestBase
 
         public ContractExecutor(int chainId = 0)
         {
-            _chainId = chainId == 0 ? ChainHelpers.ConvertBase58ToChainId("AELF"):chainId;
+            _chainId = (chainId == 0) ? ChainHelpers.ConvertBase58ToChainId("AELF"):chainId;
 
             var application =
                 AbpApplicationFactory.Create<ContractTestAElfModule>(options => { options.UseAutofac(); });
