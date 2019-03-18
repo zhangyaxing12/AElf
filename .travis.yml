@@ -3,6 +3,11 @@ sudo: required
 mono: none
 dotnet: 2.2
 dist: xenial
+cache:
+  yarn: true 
+  directories:
+    - $HOME/.nuget/packages
+    - $(pwd)/ChakraCoreFiles
 before_install:
   - bash scripts/install_protobuf.sh
   - nvm install node
