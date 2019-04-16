@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using AElf.Kernel.Account.Application;
@@ -39,7 +40,16 @@ namespace AElf.Kernel.Services
         public async Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight, DateTime dateTime,
             TimeSpan timeSpan)
         {
+ 
+            Logger.LogTrace($"I have {timeSpan.TotalMilliseconds} ms for mining");
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var executableTransactionSet = await _txHub.GetExecutableTransactionSetAsync();
+            stopwatch.Stop();
+            Logger.LogInformation($"---1---- executableTransactionSet: {stopwatch.ElapsedMilliseconds} ms");
+            
+
+            
             var pending = new List<Transaction>();
             if (executableTransactionSet.PreviousBlockHash == previousBlockHash)
             {
@@ -51,6 +61,7 @@ namespace AElf.Kernel.Services
                                   $"{executableTransactionSet.PreviousBlockHash} which doesn't match the current " +
                                   $"best chain hash {previousBlockHash}.");
             }
+            Logger.LogTrace($"Get {pending.Count} transactions, have {timeSpan.TotalMilliseconds} ms for mining");
 
             return await _miningService.MineAsync(previousBlockHash, previousBlockHeight, pending, dateTime, timeSpan);
         }
@@ -133,9 +144,17 @@ namespace AElf.Kernel.Services
         public async Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight,
             List<Transaction> transactions, DateTime blockTime, TimeSpan timeSpan)
         {
+            
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var block = await GenerateBlock(previousBlockHash, previousBlockHeight, blockTime);
+            stopwatch.Stop();
+            Logger.LogInformation($"----2-----GenerateBlock: {stopwatch.ElapsedMilliseconds} ms");
+            stopwatch.Restart();
             var systemTransactions = await GenerateSystemTransactions(previousBlockHash, previousBlockHeight);
-
+            stopwatch.Stop();
+            Logger.LogInformation($"----3-----systemTransactions: {stopwatch.ElapsedMilliseconds} ms");
+            
             var pending = transactions;
 
             using (var cts = new CancellationTokenSource())
