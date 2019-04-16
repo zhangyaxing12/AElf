@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Kernel.Blockchain.Domain;
@@ -258,13 +259,30 @@ namespace AElf.Kernel.Blockchain.Application
 
             // TODO: move to background job, it will slow down our system
             // Clean last branches and not linked
+            
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var toCleanBlocks = await _chainManager.CleanBranchesAsync(chain, chain.LastIrreversibleBlockHash,
                 chain.LastIrreversibleBlockHeight);
+            stopwatch.Stop();
+            Logger.LogInformation($"---4---- CleanBranchesAsync: {stopwatch.ElapsedMilliseconds} ms");
+            
+            stopwatch.Restart();
             await RemoveBlocksAsync(toCleanBlocks);
+            stopwatch.Stop();
+            Logger.LogInformation($"---5---- RemoveBlocksAsync: {stopwatch.ElapsedMilliseconds} ms");
 
+            
+            stopwatch.Restart();
             await _chainManager.SetIrreversibleBlockAsync(chain, irreversibleBlockHash);
+            stopwatch.Stop();
+            Logger.LogInformation($"---6---- _chainManager.SetIrreversibleBlockAsync: {stopwatch.ElapsedMilliseconds} ms");
 
+            stopwatch.Restart();
             await LocalEventBus.PublishAsync(eventDataToPublish);
+            stopwatch.Stop();
+            Logger.LogInformation($"---7---- LocalEventBus.PublishAsync: {stopwatch.ElapsedMilliseconds} ms");
+
         }
 
         public async Task<List<IBlockIndex>> GetReversedBlockIndexes(Hash lastBlockHash, int count)
