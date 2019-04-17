@@ -33,7 +33,7 @@ namespace AElf.CLI.Commands
                 [typeof(GetTxResultOption)] = typeof(GetTxResultCommand),
                 [typeof(GetBlockHeightOption)] = typeof(GetBlockHeightCommand),
                 [typeof(GetBlockInfoOption)] = typeof(GetBlockInfoCommand),
-                [typeof(GetMerkelPathOption)] = typeof(GetMerkelPathCommand),
+                [typeof(GetTransactionMerklePathOption)] = typeof(GetTransactionMerklePathCommand),
                 [typeof(CreateMultiSigOption)] = typeof(CreateMultiSigAddressCommand),
                 [typeof(ProposalOption)] = typeof(ProposeCommand),
                 [typeof(CheckProposalOption)] = typeof(CheckProposalCommand),
