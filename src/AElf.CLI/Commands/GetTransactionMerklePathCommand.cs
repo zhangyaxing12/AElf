@@ -3,6 +3,7 @@ using CommandLine;
 
 namespace AElf.CLI.Commands
 {
+    [Verb("get-merkle-path", HelpText = "Get merkle path of transaction.")]
     public class GetTransactionMerklePathOption : BaseOption
     {
         [Value(0, HelpText = "The transaction hash to query.", Required = true)]
@@ -41,13 +42,12 @@ namespace AElf.CLI.Commands
             }
             
             _engine.RunScript($@"
-                    var res = aelf.chain.getMerklePath({_option.TxId}, {_option.Height});
+                    var res = aelf.chain.getMerklePath('{_option.TxId}', {_option.Height});
                 ");
             
             // print merkle path
-            _engine.RunScript($@"
-                    console.log(res.toString('hex'));
-                    //res.forEach(function (path) {{console.log(path.toString('hex'));}});
+            _engine.RunScript($@"                    
+                    console.log('[', res.map(p => p.toString('hex')).join(','), ']');
                 ");
             
         }
