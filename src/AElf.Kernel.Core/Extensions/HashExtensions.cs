@@ -2,18 +2,10 @@ using System;
 
 namespace AElf.Kernel
 {
+    // TODO: Move to Types
     public static class HashExtensions
     {
-        /// <summary>
-        /// Checks if a <see cref="Hash"/> instance is null.
-        /// </summary>
-        /// <param name="hash"></param>
-        /// <returns></returns>
-        public static bool IsNull(this Hash hash)
-        {
-            return hash == null || hash.ToHex().RemoveHexPrefix().Length == 0;
-        }
-
+        // TODO: Consider Span
         public static Hash Xor(this Hash hash, Hash another)
         {
             if (hash.Value.Length != another.Value.Length)

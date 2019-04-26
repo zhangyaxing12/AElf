@@ -237,6 +237,7 @@ namespace AElf.Kernel.Blockchain.Domain
             }
         }
 
+        // TODO: GetNotExecutedBlocks(Chain chain, Hash blockHash), chainBlockLink is not enough
         public async Task<List<ChainBlockLink>> GetNotExecutedBlocks(Hash blockHash)
         {
             var output = new List<ChainBlockLink>();
@@ -252,7 +253,8 @@ namespace AElf.Kernel.Blockchain.Domain
                             blockHash = chainBlockLink.PreviousBlockHash;
                         continue;
                     }
-                    else if (chainBlockLink.ExecutionStatus == ChainBlockLinkExecutionStatus.ExecutionFailed)
+
+                    if (chainBlockLink.ExecutionStatus == ChainBlockLinkExecutionStatus.ExecutionFailed)
                     {
                         output.Clear();
                     }
@@ -294,6 +296,7 @@ namespace AElf.Kernel.Blockchain.Domain
             return ChainId;
         }
 
+        // TODO: Clean branches based on LIB Height only.
         public async Task<List<Hash>> CleanBranchesAsync(Chain chain, Hash irreversibleBlockHash, long irreversibleBlockHeight)
         {
             var toRemoveBlocks = new List<Hash>();

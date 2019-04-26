@@ -116,7 +116,7 @@ namespace AElf.OS.Network.Application
             // shuffle the peers that can give us the blocks
             var shuffledPeers = _peerPool.GetPeers()
                 .Where(p => p.CurrentBlockHeight >= previousHeight)
-                .OrderBy(a => Guid.NewGuid());
+                .OrderBy(a => Guid.NewGuid());// TODO: Use announcement time to shuffle.
                 
             foreach (var peer in shuffledPeers)
             {

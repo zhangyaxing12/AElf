@@ -40,6 +40,7 @@ namespace AElf.OS
             {
                 configuration.GetSection("Account").Bind(option);
 
+                // TODO: Make a method or sth.
                 if (string.IsNullOrWhiteSpace(option.NodeAccount))
                 {
                     AsyncHelper.RunSync(async () =>

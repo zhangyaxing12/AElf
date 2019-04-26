@@ -6,12 +6,11 @@ namespace AElf.Kernel
     {
 
         /// <summary>
-        /// Calculate merkle tree root of transaction and side chain block info. 
+        /// Calculate merkle tree root of transaction.
         /// </summary>
         /// <returns></returns>
-        public static Hash CalculateMerkleTreeRoots(this BlockBody blockBody)
+        public static Hash CalculateMerkleTreeRoot(this BlockBody blockBody)
         {
-            // side chain info
             if (blockBody.TransactionsCount == 0)
                 return Hash.Empty;
             if (blockBody.BinaryMerkleTree.Root != null)
@@ -22,17 +21,10 @@ namespace AElf.Kernel
             return blockBody.BinaryMerkleTree.Root;
         }
 
-        public static bool AddTransaction(this BlockBody blockBody, Transaction tx)
+        public static void AddTransaction(this BlockBody blockBody, Transaction tx)
         {
             blockBody.Transactions.Add(tx.GetHash());
-            blockBody.TransactionList.Add(tx);
-            return true;
-        }
-
-        public static bool AddTransactions(this BlockBody blockBody, IEnumerable<Hash> txs)
-        {
-            blockBody.Transactions.Add(txs);
-            return true;
+            blockBody.TransactionList.Add(tx);// TODO: Remove
         }
     }
 }

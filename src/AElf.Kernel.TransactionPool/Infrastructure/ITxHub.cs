@@ -12,6 +12,7 @@ namespace AElf.Kernel.TransactionPool.Infrastructure
         public List<Transaction> Transactions { get; set; } = new List<Transaction>();
     }
 
+    // TODO: Rename method name and params name of Handle**.
     public interface ITxHub
     {
         Task<ExecutableTransactionSet> GetExecutableTransactionSetAsync();

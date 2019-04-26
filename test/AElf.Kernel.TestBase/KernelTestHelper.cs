@@ -146,7 +146,7 @@ namespace AElf.Kernel
                 newBlock.AddTransaction(transaction);
             }
 
-            newBlock.Header.MerkleTreeRootOfTransactions = newBlock.Body.CalculateMerkleTreeRoots();
+            newBlock.Header.MerkleTreeRootOfTransactions = newBlock.Body.CalculateMerkleTreeRoot();
 
             return newBlock;
         }

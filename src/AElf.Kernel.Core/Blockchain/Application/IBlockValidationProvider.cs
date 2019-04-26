@@ -101,7 +101,7 @@ namespace AElf.Kernel.Blockchain.Application
             if (block.Height != KernelConstants.GenesisBlockHeight && !block.VerifySignature())
                 return false;
 
-            if (block.Body.CalculateMerkleTreeRoots() != block.Header.MerkleTreeRootOfTransactions)
+            if (block.Body.CalculateMerkleTreeRoot() != block.Header.MerkleTreeRootOfTransactions)
                 return false;
 
             if (block.Height != KernelConstants.GenesisBlockHeight &&

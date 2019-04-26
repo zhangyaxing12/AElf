@@ -166,13 +166,12 @@ namespace AElf.Kernel.Blockchain.Application
 
         public async Task AddBlockAsync(Block block)
         {
-            await _blockManager.AddBlockHeaderAsync(block.Header);
             foreach (var transaction in block.Body.TransactionList)
             {
                 await _transactionManager.AddTransactionAsync(transaction);
             }
-
             await _blockManager.AddBlockBodyAsync(block.Header.GetHash(), block.Body);
+            await _blockManager.AddBlockHeaderAsync(block.Header);
         }
 
         public async Task<bool> HasBlockAsync(Hash blockId)

@@ -16,11 +16,11 @@ namespace AElf.Kernel.Infrastructure
     public class StoreKeyPrefixProvider<T> : IStoreKeyPrefixProvider<T>
         where T : IMessage<T>, new()
     {
-        private static readonly string _typeName = typeof(T).Name;
+        private static readonly string TypeName = typeof(T).Name;
 
         public string GetStoreKeyPrefix()
         {
-            return _typeName;
+            return TypeName;
         }
     }
 
@@ -52,7 +52,7 @@ namespace AElf.Kernel.Infrastructure
         private readonly MessageParser<T> _messageParser;
 
 
-        public KeyValueStoreBase(TKeyValueDbContext keyValueDbContext, IStoreKeyPrefixProvider<T> prefixProvider)
+        protected KeyValueStoreBase(TKeyValueDbContext keyValueDbContext, IStoreKeyPrefixProvider<T> prefixProvider)
         {
             _keyValueDbContext = keyValueDbContext;
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -81,7 +81,7 @@ namespace AElf.Kernel.Infrastructure
         {
             var result = await _collection.GetAsync(key);
 
-            return result == null ? default(T) : Deserialize(result);
+            return result == null ? default : Deserialize(result);
         }
 
         private T Deserialize(byte[] result)

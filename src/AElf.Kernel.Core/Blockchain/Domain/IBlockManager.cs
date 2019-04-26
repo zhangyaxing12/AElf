@@ -50,12 +50,12 @@ namespace AElf.Kernel.Blockchain.Domain
             try
             {
                 var header = await GetBlockHeaderAsync(blockHash);
-                var bb = await GetBlockBodyAsync(blockHash);
+                var body = await GetBlockBodyAsync(blockHash);
 
-                if (header == null || bb == null)
+                if (header == null || body == null)
                     return null;
 
-                return new Block { Header = header, Body = bb };
+                return new Block { Header = header, Body = body };
             }
             catch (Exception e)
             {

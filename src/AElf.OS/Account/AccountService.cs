@@ -23,6 +23,7 @@ namespace AElf.OS.Account
             return signature;
         }
 
+        // TODO: Consider to remove.
         public async Task<bool> VerifySignatureAsync(byte[] signature, byte[] data, byte[] publicKey)
         {
             var recoverResult = CryptoHelpers.RecoverPublicKey(signature, data, out var recoverPublicKey);

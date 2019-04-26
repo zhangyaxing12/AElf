@@ -28,6 +28,7 @@ namespace AElf.Kernel
 
             services.AddTransient(typeof(IStoreKeyPrefixProvider<>), typeof(StoreKeyPrefixProvider<>));
 
+            // TODO: Add other types' prefix.
             services.AddStoreKeyPrefixProvide<BlockBody>("b");
             services.AddStoreKeyPrefixProvide<BlockHeader>("h");
             services.AddStoreKeyPrefixProvide<Chain>("c");

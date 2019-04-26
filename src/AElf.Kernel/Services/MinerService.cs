@@ -14,11 +14,12 @@ using ByteString = Google.Protobuf.ByteString;
 
 namespace AElf.Kernel.Services
 {
+    // TODO: Add AElf.Kernel.Mining
     public class MinerService : IMinerService
     {
         public ILogger<MinerService> Logger { get; set; }
-        private ITxHub _txHub;
-        private IMiningService _miningService;
+        private readonly ITxHub _txHub;
+        private readonly IMiningService _miningService;
         public ILocalEventBus EventBus { get; set; }
 
         private const float RatioMine = 0.3f;
@@ -37,7 +38,7 @@ namespace AElf.Kernel.Services
         /// </summary>
         /// <returns></returns>
         public async Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight, DateTime dateTime,
-            TimeSpan timeSpan)
+            TimeSpan blockExecutionTime)
         {
             var executableTransactionSet = await _txHub.GetExecutableTransactionSetAsync();
             var pending = new List<Transaction>();
@@ -52,11 +53,11 @@ namespace AElf.Kernel.Services
                                   $"best chain hash {previousBlockHash}.");
             }
 
-            return await _miningService.MineAsync(previousBlockHash, previousBlockHeight, pending, dateTime, timeSpan);
+            return await _miningService.MineAsync(previousBlockHash, previousBlockHeight, pending, dateTime, blockExecutionTime);
         }
     }
 
-
+    // TODO: Move to AElf.Kernel.SmartContractExecution
     public class MiningService : IMiningService
     {
         public ILogger<MiningService> Logger { get; set; }
@@ -125,7 +126,7 @@ namespace AElf.Kernel.Services
         }
 
         public async Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight,
-            List<Transaction> transactions, DateTime blockTime, TimeSpan timeSpan)
+            List<Transaction> transactions, DateTime blockTime, TimeSpan blockExecutionTime)
         {
             var block = await GenerateBlock(previousBlockHash, previousBlockHeight, blockTime);
             var systemTransactions = await GenerateSystemTransactions(previousBlockHash, previousBlockHeight);
@@ -134,7 +135,7 @@ namespace AElf.Kernel.Services
 
             using (var cts = new CancellationTokenSource())
             {
-                cts.CancelAfter(timeSpan);
+                cts.CancelAfter(blockExecutionTime);
                 block = await _blockExecutingService.ExecuteBlockAsync(block.Header,
                     systemTransactions, pending, cts.Token);
             }

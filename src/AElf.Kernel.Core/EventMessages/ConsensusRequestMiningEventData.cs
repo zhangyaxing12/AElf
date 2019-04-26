@@ -2,20 +2,21 @@ using System;
 
 namespace AElf.Kernel.EventMessages
 {
+    // TODO: Move to Kernel.Consensus
     public class ConsensusRequestMiningEventData
     {
         public Hash PreviousBlockHash { get; }
         public long PreviousBlockHeight { get; }
-        public TimeSpan TimeSpan { get; }
+        public TimeSpan BlockExecutionTime { get; }
         public DateTime BlockTime { get; }
 
         public ConsensusRequestMiningEventData(Hash previousBlockHash, long previousBlockHeight, DateTime blockTime,
-            TimeSpan timeSpan)
+            TimeSpan blockExecutionTime)
         {
             PreviousBlockHash = previousBlockHash;
             PreviousBlockHeight = previousBlockHeight;
             BlockTime = blockTime;
-            TimeSpan = timeSpan;
+            BlockExecutionTime = blockExecutionTime;
         }
     }
 }
