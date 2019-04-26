@@ -49,6 +49,12 @@ namespace AElf.Blockchains.MainChain
             Logger = NullLogger<MainChainAElfModule>.Instance;
         }
 
+        public override void ConfigureServices(ServiceConfigurationContext context)
+        {
+            // TODO: Config smart contract context vars according to ChainOptions.**Type
+            // TODO: Only custom net read config files.
+        }
+
         public override void OnApplicationInitialization(ApplicationInitializationContext context)
         {
             var tokenInitialOptions = context.ServiceProvider.GetService<IOptionsSnapshot<TokenInitialOptions>>().Value;

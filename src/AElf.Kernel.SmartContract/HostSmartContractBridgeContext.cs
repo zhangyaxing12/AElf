@@ -98,12 +98,12 @@ namespace AElf.Kernel.SmartContract
 
         public byte[] EncryptMessage(byte[] receiverPublicKey, byte[] plainMessage)
         {
-            return AsyncHelper.RunSync(() => _accountService.EncryptMessage(receiverPublicKey, plainMessage));
+            return AsyncHelper.RunSync(() => _accountService.EncryptMessageAsync(receiverPublicKey, plainMessage));
         }
 
         public byte[] DecryptMessage(byte[] senderPublicKey, byte[] cipherMessage)
         {
-            return AsyncHelper.RunSync(() => _accountService.DecryptMessage(senderPublicKey, cipherMessage));
+            return AsyncHelper.RunSync(() => _accountService.DecryptMessageAsync(senderPublicKey, cipherMessage));
         }
 
         public Transaction Transaction => TransactionContext.Transaction.Clone();

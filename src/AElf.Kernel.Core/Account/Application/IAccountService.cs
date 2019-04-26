@@ -2,13 +2,14 @@ using System.Threading.Tasks;
 
 namespace AElf.Kernel.Account.Application
 {
+    // TODO: Implement an in memory AccountService here.
     public interface IAccountService
     {
         Task<byte[]> SignAsync(byte[] data);
         Task<bool> VerifySignatureAsync(byte[] signature, byte[] data, byte[] publicKey);
         Task<byte[]> GetPublicKeyAsync();
-        Task<byte[]> EncryptMessage(byte[] receiverPublicKey, byte[] plainMessage);
-        Task<byte[]> DecryptMessage(byte[] senderPublicKey, byte[] cipherMessage);
+        Task<byte[]> EncryptMessageAsync(byte[] receiverPublicKey, byte[] plainMessage);
+        Task<byte[]> DecryptMessageAsync(byte[] senderPublicKey, byte[] cipherMessage);
     }
 
     public static class AccountServiceExtensions

@@ -10,6 +10,8 @@ namespace AElf.Kernel.Blockchain.Application
     public class BlockExtraDataService : IBlockExtraDataService
     {
         private readonly List<IBlockExtraDataProvider> _blockExtraDataProviders;
+        
+        // TODO: IEnumerable -> IServiceContainer
         public BlockExtraDataService(IEnumerable<IBlockExtraDataProvider> blockExtraDataProviders)
         {
             _blockExtraDataProviders = blockExtraDataProviders.ToList();
@@ -29,13 +31,14 @@ namespace AElf.Kernel.Blockchain.Application
             }
         }
 
+        // TODO: Reuse order of _blockExtraDataProviders / Add Name to ExtraDataProvider
         public ByteString GetExtraDataFromBlockHeader(string blockExtraDataProviderSymbol, BlockHeader blockHeader)
         {
             if (blockHeader.Height == KernelConstants.GenesisBlockHeight)
                 return null;
             for (var i = 0; i < _blockExtraDataProviders.Count; i++)
             {
-                var blockExtraDataProviderName = _blockExtraDataProviders[i].GetType().Name;
+                var blockExtraDataProviderName = _blockExtraDataProviders[i].GetType().Name;// TODO: Do not use GetType()
                 if (blockExtraDataProviderName.Contains(blockExtraDataProviderSymbol) && i < blockHeader.BlockExtraDatas.Count)
                 {
                     return blockHeader.BlockExtraDatas[i];
@@ -44,6 +47,7 @@ namespace AElf.Kernel.Blockchain.Application
             return null;
         }
 
+        // TODO: Add a new filed to BlockHeader.
         public void FillMerkleTreeRootExtraDataForTransactionStatus(BlockHeader blockHeader,
             IEnumerable<(Hash, TransactionResultStatus)> blockExecutionReturnSet)
         {
