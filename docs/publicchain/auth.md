@@ -1,4 +1,0 @@
-## auth contract
-
-### Intro
-### arch

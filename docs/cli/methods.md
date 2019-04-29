@@ -1,8 +1,8 @@
-## CLI commands
+# Commands
 
-This page is a reference for the methods that are available on the command line interface (cli). Each example will execute the cli with the **aelf-cli** command, this simply implies that we have aliased the dotnet command to this command.
+This page is a reference for the methods that are available on the command line interface \(cli\). Each example will execute the cli with the **aelf-cli** command, this simply implies that we have aliased the dotnet command to this command.
 
-### Common options
+## Common options
 
 As seen previously, the following options can be specified for all commands, either with the options flag or by setting environment variables:
 
@@ -13,15 +13,16 @@ As seen previously, the following options can be specified for all commands, eit
 -p, --password       The password for unlocking the account.
 ```
 
-### create - create a new account.
+## create - create a new account.
 
 This command will walk you through the process of creating a key-pair. You can decide to save this keypair to the disk. For most scenarios you would reply "yes" because if you don't the key will not be retrievable for later use. If you reply "yes" to saving to the disk, the command will create a .ak file in your **datadir**. This .ak file will contain the encrypted keypair. It's encrypted by a password, so be sure to remember it if you need to use this key again.
 
-```bash 
-aelf-cli create 
+```bash
+aelf-cli create
 ```
 
 Example:
+
 ```bash
 aelf-cli create 
 Your wallet info is :
@@ -37,16 +38,17 @@ Account info has been saved to "~/.local/share/aelf/keys/232pnSP16kYHHKhtp9JjEds
 
 The command prints both the private and public key as well as the AElf address associated with this key pair. Finally, you'll be able to verify the path where the key-pair is stored.
 
-### deploy - deploy a smart contract.
+## deploy - deploy a smart contract.
 
-```bash 
+```bash
 aelf-cli deploy <category> <code>
 ```
 
-Category    Required. Obsolete. The category of the contract to be deployed.  
-Code        Required. The compiled contract code file of the contract to be deployed. This is the path             to the compiled code.  
+Category Required. Obsolete. The category of the contract to be deployed.  
+Code Required. The compiled contract code file of the contract to be deployed. This is the path to the compiled code.
 
 Example:
+
 ```bash
 > aelf-cli deploy 0 bin/Debug/netstandard2.0/test-aelf.dll
 connect...                                                                                        Deploying Deploying contract...
@@ -55,21 +57,22 @@ TransactionId is: 12ad81712e54caa320a1a386196ff7d4bb8ff7d1e2e096c5e71054ce30f2fa
 
 If successful the command will return the ID of the deployement transaction. See get-tx-result for more information.
 
-### send - send a transaction to a contract.
+## send - send a transaction to a contract.
 
 The send command will generate a transaction in order to call a method on the contract at the specified address.
 
-```bash 
+```bash
 aelf-cli send <address> <method> <method-input>
 ```
 
-address       Required. The address of the contract.  
-method        (optional) The particular method of the contract.  
-method-input  (optional) The input for the method in json format.
+address Required. The address of the contract.  
+method \(optional\) The particular method of the contract.  
+method-input \(optional\) The input for the method in json format.
 
 Return the ID of the generated transaction.
 
 Example: send a transaction to the **Transfer** method on the contract at address **4Qj...Eo6**.
+
 ```bash
 aelf-cli send 4QjhKLWacRXrQYpT7rzf74k5XZFCx8yF3X7FXbzKD4wwEo6 Transfer '{amount:"1000",symbol:"ELF",to:"..."}'
 connect...
@@ -94,21 +97,22 @@ connect...
 
 Call with the method name without parameter will return information about the parameters, like their name and type.
 
-### call - send a transaction to a contract.
+## call - send a transaction to a contract.
 
 The **call** command will generate a transaction in order to call a method on the contract at the specified address. The difference with the **send** is that call will not persist any modifications made to the state in the contract. A transaction created with call will not be included in a block nor broadcast.
 
-```bash 
+```bash
 aelf-cli call <address> <method> <method-input>
 ```
 
-address       Required. The address of the contract.  
-method        (optional) The particular method of the contract.  
-method-input  (optional) The input for the method in json format.
+address Required. The address of the contract.  
+method \(optional\) The particular method of the contract.  
+method-input \(optional\) The input for the method in json format.
 
 Returns the result in JSON format.
 
 Example:
+
 ```bash
 aelf-cli call 4QjhKLWacRXrQYpT7rzf74k5XZFCx8yF3X7FXbzKD4wwEo6 Hello '{}'
 connect...
@@ -117,19 +121,21 @@ connect...
 }
 ```
 
-### get-tx-result - get a transaction result.
+## get-tx-result - get a transaction result.
 
-```bash 
+```bash
 aelf-cli get-tx-result <tx-hash>
 ```
-tx-hash      Required. The tx hash to query.  
+
+tx-hash Required. The tx hash to query.
 
 Example:
-```bash 
+
+```bash
 aelf-cli get-tx-result ab435790a62abd6a669d002d56771b27bb683a73ce46de0f389ec045e4f3405c
 ```
 
-```json 
+```javascript
 {
   "TransactionId": "ab435790a62abd6a669d002d56771b27bb683a73ce46de0f389ec045e4f3405c",
   "Status": "Mined",
@@ -162,36 +168,39 @@ aelf-cli get-tx-result ab435790a62abd6a669d002d56771b27bb683a73ce46de0f389ec045e
 }
 ```
 
-This shows the transaction result of a smart contract deployement transaction. It return a json with the transaction itself, the return value of the called method (the address of the contract in this case), the status and the hash of the block it was included in (if any).
+This shows the transaction result of a smart contract deployement transaction. It return a json with the transaction itself, the return value of the called method \(the address of the contract in this case\), the status and the hash of the block it was included in \(if any\).
 
-### get-blk-height - get the block height.
+## get-blk-height - get the block height.
 
 This command get the current height of the best chain.
 
-```bash 
+```bash
 aelf-cli get-blk-height
 ```
+
 Example:
-```bash 
+
+```bash
 aelf-cli get-blk-height
 > 27
 ```
 
-### get-blk-info - get the block info by block height.
+## get-blk-info - get the block info by block height.
 
-```bash 
+```bash
 aelf-cli get-blk-info <height> <include-txs>
 ```
 
-height           Required. The height of the block to query.  
-include-txs      Whether to include transactions.  
+height Required. The height of the block to query.  
+include-txs Whether to include transactions.
 
 Example:
-```bash 
+
+```bash
 aelf-cli get-blk-info 27 true
 ```
 
-```json 
+```javascript
 {
   "BlockHash": "a81f4f5edab4172d232d1ff9b8536d58d420474cbb30a00e12726abff57c624e",
   "Header": {
@@ -215,7 +224,7 @@ aelf-cli get-blk-info 27 true
 
 This has returned information about the block and because the include-txs option was set to true, we can also see the ids of the transaction ids or the transactions that where included in the block.
 
-### console - open an interactive console.
+## console - open an interactive console.
 
 This is a special command that you can use to start an interactive session where you can use javascript to interact with the chain. Type 'exit' to stop the session.
 
@@ -257,3 +266,4 @@ timer
 100                                                                             
 > exit
 ```
+
