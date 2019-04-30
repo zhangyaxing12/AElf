@@ -34,6 +34,7 @@ namespace AElf.Contracts.TestBase
             services.AddSingleton(o => Mock.Of<INetworkService>());
             
             // When testing contract and packaging transactions, no need to generate and schedule real consensus stuff.
+            context.Services.AddSingleton(o => Mock.Of<IConsensusService>());
             context.Services.AddSingleton(o => Mock.Of<IConsensusInformationGenerationService>());
             context.Services.AddSingleton(o => Mock.Of<IConsensusScheduler>());
             
@@ -57,21 +58,7 @@ namespace AElf.Contracts.TestBase
                 mockService.Setup(a => a.GetPublicKeyAsync()).ReturnsAsync(ecKeyPair.PublicKey);
                 
                 return mockService.Object;
-            });
-            
-            Configure<DPoSOptions>(o => 
-            {
-                var miners = new List<string>();
-                for (var i = 0; i < 3; i++)
-                {
-                    miners.Add(CryptoHelpers.GenerateKeyPair().PublicKey.ToHex());
-                }
-
-                o.InitialMiners = miners;
-                o.MiningInterval = 4000;
-                o.IsBootMiner = true;
-                o.StartTimestamp = DateTime.UtcNow;
-            });
+            });    
         }
     }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using AElf.Consensus.DPoS;
+using Acs3;
+using AElf.Contracts.Consensus.DPoS.SideChain;
 using AElf.Contracts.MultiToken.Messages;
 using AElf.Kernel;
 using AElf.Sdk.CSharp.State;
@@ -12,65 +13,6 @@ namespace AElf.Contracts.CrossChain
 {
     public partial class CrossChainContract
     {
-//        private Hash Propose(string proposalName, int waitingPeriod, Address fromAddress,
-//            Address targetAddress, string invokingMethod, IMessage input)
-//        {
-//            // packed txn
-//            byte[] txnData = new Transaction
-//            {
-//                From = fromAddress,
-//                To = targetAddress,
-//                MethodName = invokingMethod,
-//                Params = input.ToByteString(),
-//            }.ToByteArray();
-//            var expiredTime = Context.CurrentBlockTime.AddSeconds(waitingPeriod).ToUniversalTime();
-//            Proposal proposal = new Proposal
-//            {
-//                MultiSigAccount = fromAddress,
-//                Name = proposalName,
-//                TxnData = ByteString.CopyFrom(txnData),
-//                ExpiredTime = Timestamp.FromDateTime(expiredTime),
-//                Status = ProposalStatus.ToBeDecided,
-//                Proposer = Context.Sender
-//            };
-//            //State.AuthorizationContract.Propose(proposal);
-//            return proposal.GetHash();
-//        }
-
-//        private bool IsMiner()
-//        {
-//            var roundNumber = State.ConsensusContract.GetCurrentRoundNumber();
-//            var round = State.ConsensusContract.GetRoundInformation(roundNumber);
-//            var miners = new Miners {PublicKeys = {round.RealTimeMinersInformation.Keys}};
-//            return miners.PublicKeys.Any(p => ByteArrayHelpers.FromHexString(p).BytesEqual(Context.RecoverPublicKey()));
-//        }
-//        private void CheckAuthority(Address fromAddress = null)
-//        {
-//            Assert(fromAddress == null || fromAddress.Equals(Context.Sender), "Not authorized transaction.");
-//            if (Context.Transaction.Sigs.Count == 1)
-//                // No need to verify signature again if it is not multi sig account.
-//                return;
-//            var auth = State.AuthorizationContract.GetAuthorization(Context.Sender);
-//
-//            // Get tx hash
-//            var hash = Context.TransactionId.DumpByteArray();
-//
-//            // Get pub keys
-//            var publicKeys = new List<byte[]>();
-//            foreach (var sig in Context.Transaction.Sigs)
-//            {
-//                var publicKey = Context.RecoverPublicKey(sig.ToByteArray(), hash);
-//                Assert (publicKey != null, "Invalid signature."); // this should never happen.
-//                publicKeys.Add(publicKey);
-//            }
-//            
-//            // review correctness
-//            uint provided = publicKeys
-//                .Select(pubKey => auth.Reviewers.FirstOrDefault(r => r.PubKey.ToByteArray().SequenceEqual(pubKey)))
-//                .Where(r => !(r is default(Reviewer))).Aggregate<Reviewer, uint>(0, (current, r) => current + r.Weight);
-//            Assert(provided >= auth.ExecutionThreshold, "Authorization failed without enough approval.");
-//        }
-        
         /// <summary>
         /// Bind parent chain height together with self height.
         /// </summary>
@@ -87,7 +29,7 @@ namespace AElf.Contracts.CrossChain
         {
             var txResultStatusRawBytes =
                 EncodingHelper.GetBytesFromUtf8String(TransactionResultStatus.Mined.ToString());
-            return new MerklePath(path).ComputeRootWith(
+            return new MerklePath().AddRange(path).ComputeRootWith(
                 Hash.FromRawBytes(txId.DumpByteArray().Concat(txResultStatusRawBytes).ToArray()));
         }
 
@@ -119,7 +61,7 @@ namespace AElf.Contracts.CrossChain
             var balance = GetBalance(new GetBalanceInput
             {
                 Owner = Context.Sender,
-                Symbol = "ELF"
+                Symbol = Context.Variables.NativeSymbol
             });
 
             Assert(balance > 0);
@@ -129,7 +71,7 @@ namespace AElf.Contracts.CrossChain
                 From = Context.Sender,
                 To = Context.Self,
                 Amount = sideChainInfo.LockedTokenAmount,
-                Symbol = "ELF"
+                Symbol = Context.Variables.NativeSymbol
             });
             State.IndexingBalance[chainId] = sideChainInfo.LockedTokenAmount;
             // Todo: enable resource
@@ -151,7 +93,7 @@ namespace AElf.Contracts.CrossChain
                 {
                     To = sideChainInfo.Proposer,
                     Amount = balance,
-                    Symbol = "ELF"
+                    Symbol = Context.Variables.NativeSymbol
                 });
             State.IndexingBalance[chainId] = 0;
 
@@ -230,6 +172,39 @@ namespace AElf.Contracts.CrossChain
             return chainId != State.ParentChainId.Value
                 ? GetCousinChainMerkleTreeRoot(parentChainHeight)
                 : GetParentChainMerkleTreeRoot(parentChainHeight);
+        }
+
+        private Address GetOwnerAddress()
+        {
+            if (State.Owner.Value != null) 
+                return State.Owner.Value;
+            ValidateContractState(State.ParliamentAuthContract, State.ParliamentAuthContractSystemName.Value);
+            Address organizationAddress = State.ParliamentAuthContract.GetDefaultOrganizationAddress.Call(new Empty());
+            State.Owner.Value = organizationAddress;
+
+            return State.Owner.Value;
+        }
+        
+        private void CheckOwnerAuthority()
+        {
+            var owner = GetOwnerAddress();
+            Assert(owner.Equals(Context.Sender), "Not authorized to do this.");
+        }
+        
+        private Hash Propose(int waitingPeriod, Address targetAddress, string invokingMethod, IMessage input)
+        {
+            var expiredTime = Context.CurrentBlockTime.AddSeconds(waitingPeriod).ToUniversalTime();
+            var proposal = new CreateProposalInput
+            {
+                ContractMethodName = invokingMethod,
+                OrganizationAddress = GetOwnerAddress(),
+                ExpiredTime = Timestamp.FromDateTime(expiredTime),
+                Params = input.ToByteString(),
+                ToAddress = targetAddress
+            };
+            ValidateContractState(State.ParliamentAuthContract, State.ParliamentAuthContractSystemName.Value);
+            State.ParliamentAuthContract.CreateProposal.Send(proposal);
+            return Hash.FromMessage(proposal);
         }
     }
 }
