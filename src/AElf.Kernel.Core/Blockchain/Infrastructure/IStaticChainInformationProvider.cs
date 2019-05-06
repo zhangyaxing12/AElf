@@ -7,19 +7,12 @@ namespace AElf.Kernel.Blockchain.Infrastructure
     {
         int ChainId { get; }
         Address ZeroSmartContractAddress { get; }
-
-        Address GetSystemContractAddressInGenesisBlock(ulong i);
     }
 
     public class StaticChainInformationProvider : IStaticChainInformationProvider, ISingletonDependency
     {
         public int ChainId { get; }
         public Address ZeroSmartContractAddress { get; }
-
-        public Address GetSystemContractAddressInGenesisBlock(ulong i)
-        {
-            return BuildContractAddress(ChainId, i);
-        }
 
         public StaticChainInformationProvider(IOptionsSnapshot<ChainOptions> chainOptions)
         {
@@ -33,13 +26,13 @@ namespace AElf.Kernel.Blockchain.Infrastructure
         /// <param name="chainId"></param>
         /// <param name="serialNumber"></param>
         /// <returns></returns>
-        public static Address BuildContractAddress(Hash chainId, ulong serialNumber)
+        private static Address BuildContractAddress(Hash chainId, ulong serialNumber)
         {
             var hash = Hash.FromTwoHashes(chainId, Hash.FromRawBytes(serialNumber.ToBytes()));
             return Address.FromBytes(hash.DumpByteArray());
         }
 
-        public static Address BuildContractAddress(int chainId, ulong serialNumber)
+        private static Address BuildContractAddress(int chainId, ulong serialNumber)
         {
             return BuildContractAddress(chainId.ComputeHash(), serialNumber);
         }

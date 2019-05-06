@@ -166,13 +166,12 @@ namespace AElf.Kernel.Blockchain.Application
 
         public async Task AddBlockAsync(Block block)
         {
-            await _blockManager.AddBlockHeaderAsync(block.Header);
             foreach (var transaction in block.Body.TransactionList)
             {
                 await _transactionManager.AddTransactionAsync(transaction);
             }
-
             await _blockManager.AddBlockBodyAsync(block.Header.GetHash(), block.Body);
+            await _blockManager.AddBlockHeaderAsync(block.Header);
         }
 
         public async Task<bool> HasBlockAsync(Hash blockId)
@@ -201,7 +200,10 @@ namespace AElf.Kernel.Blockchain.Application
 
             var chainBlockLink = await _chainManager.GetChainBlockLinkAsync(chainBranchBlockHash);
             if (chainBlockLink.Height < height)
+            {
+                // TODO: Log Warn here.
                 return null;
+            }
             while (true)
             {
                 if (chainBlockLink.Height == height)
@@ -210,11 +212,14 @@ namespace AElf.Kernel.Blockchain.Application
                 chainBranchBlockHash = chainBlockLink.PreviousBlockHash;
                 chainBlockLink = await _chainManager.GetChainBlockLinkAsync(chainBranchBlockHash);
 
+                // TODO: break If LIB Height > chainBlockLink.Height
+
                 if (chainBlockLink == null)
                     return null;
             }
         }
 
+        // TODO: Add test cases for all possible situations. Like chainBlockLink == null / else
         public async Task<BlockAttachOperationStatus> AttachBlockToChainAsync(Chain chain, Block block)
         {
             var chainBlockLink = await _chainManager.GetChainBlockLinkAsync(block.GetHash());
@@ -230,6 +235,7 @@ namespace AElf.Kernel.Blockchain.Application
             }
             else
             {
+                // TODO: Check logic.
                 chainBlockLink.IsLinked = false;
                 chainBlockLink.ExecutionStatus = ChainBlockLinkExecutionStatus.ExecutionNone;
             }
@@ -267,6 +273,12 @@ namespace AElf.Kernel.Blockchain.Application
             await LocalEventBus.PublishAsync(eventDataToPublish);
         }
 
+        /// <summary>
+        /// `lastBlockHash` not included.
+        /// </summary>
+        /// <param name="lastBlockHash"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
         public async Task<List<IBlockIndex>> GetReversedBlockIndexes(Hash lastBlockHash, int count)
         {
             var hashes = new List<IBlockIndex>();
@@ -350,6 +362,7 @@ namespace AElf.Kernel.Blockchain.Application
 
             if (chainBlockLink.PreviousBlockHash != firstHash)
             {
+                // TODO: Check whether throw an Exception.
                 return new List<Hash>();
             }
 
@@ -369,6 +382,7 @@ namespace AElf.Kernel.Blockchain.Application
 
             var body = block.Body;
 
+            // TODO: Remove 
             foreach (var txId in body.Transactions)
             {
                 var tx = await _transactionManager.GetTransaction(txId);
@@ -394,9 +408,10 @@ namespace AElf.Kernel.Blockchain.Application
             return await _chainManager.GetAsync();
         }
 
-        private async Task RemoveBlocksAsync(List<Hash> blockHashs)
+        // TODO: Remove this method due to security problem.
+        private async Task RemoveBlocksAsync(List<Hash> blockHashes)
         {
-            foreach (var blockHash in blockHashs)
+            foreach (var blockHash in blockHashes)
             {
                 await _chainManager.RemoveChainBlockLinkAsync(blockHash);
                 await _blockManager.RemoveBlockAsync(blockHash);

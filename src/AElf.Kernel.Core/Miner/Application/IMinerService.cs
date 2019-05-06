@@ -4,13 +4,14 @@ using System.Threading.Tasks;
 
 namespace AElf.Kernel.Miner.Application
 {
+    // TODO: Move to AElf.Kernel.Services
     public interface IMinerService
     {
         /// <summary>
         /// This method mines a block.
         /// </summary>
         /// <returns>The block that has been produced.</returns>
-        Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight, DateTime blockTime, TimeSpan timeSpan);
+        Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight, DateTime blockTime, TimeSpan blockExecutionTime);
     }
 
     public interface IMiningService
@@ -20,6 +21,6 @@ namespace AElf.Kernel.Miner.Application
         /// </summary>
         /// <returns>The block that has been produced.</returns>
         Task<Block> MineAsync(Hash previousBlockHash, long previousBlockHeight, List<Transaction> transactions,
-            DateTime blockTime, TimeSpan timeSpan);
+            DateTime blockTime, TimeSpan blockExecutionTime);
     }
 }

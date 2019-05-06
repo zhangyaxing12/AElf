@@ -16,7 +16,7 @@ namespace AElf.Kernel.Blockchain.Application
         public Hash PreviousBlockHash { get; set; }
         public long PreviousBlockHeight { get; set; }
 
-        public DateTime BlockTime { get; set; } = DateTime.UtcNow;
+        public DateTime BlockTime { get; set; }
     }
 
     public interface IBlockGenerationService
@@ -85,6 +85,7 @@ namespace AElf.Kernel.Blockchain.Application
             }
 
             blockHeader.Bloom = ByteString.CopyFrom(bloom.Data);
+            // TODO: Check ether related code.
             var merkleTreeRootOfWorldState = ComputeHash(GetDeterministicByteArrays(blockStateSet));
             blockHeader.MerkleTreeRootOfWorldState = merkleTreeRootOfWorldState;
             
@@ -93,13 +94,14 @@ namespace AElf.Kernel.Blockchain.Application
             bmt.AddNodes(allExecutedTransactionIds);
             blockHeader.MerkleTreeRootOfTransactions = bmt.ComputeRootHash();
 
+            // TODO: Add a new field to BlockHeader.
             _blockExtraDataService.FillMerkleTreeRootExtraDataForTransactionStatus(blockHeader,
                 blockExecutionReturnSet.Select(executionReturn =>
                     (executionReturn.TransactionId, executionReturn.Status)));
             
             var blockBody = new BlockBody();
             blockBody.Transactions.AddRange(allExecutedTransactionIds);
-            blockBody.TransactionList.AddRange(transactions);
+            blockBody.TransactionList.AddRange(transactions);// TODO: Remove
             
             var block = new Block
             {
@@ -121,10 +123,12 @@ namespace AElf.Kernel.Blockchain.Application
             foreach (var k in new SortedSet<string>(keys))
             {
                 yield return Encoding.UTF8.GetBytes(k);
+                // TODO: What if blockStateSet.Changes[k] == null.
                 yield return blockStateSet.Changes[k].ToByteArray();
             }
         }
 
+        // TODO: Remove
         private Hash ComputeHash(IEnumerable<byte[]> byteArrays)
         {
             using (var hashAlgorithm = SHA256.Create())

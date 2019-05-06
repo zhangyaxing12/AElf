@@ -16,6 +16,7 @@ namespace AElf.Kernel
                 block.Body = new BlockBody();
 
             block.Body.AddTransaction(tx);
+            block.Body.AddTransaction(tx);
         }
 
         public static bool VerifyFormat(this IBlock block)

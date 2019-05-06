@@ -35,6 +35,7 @@ namespace AElf.Kernel.Blockchain.Application
 
         public async Task AddTransactionResultAsync(TransactionResult transactionResult, BlockHeader blockHeader)
         {
+            // TODO: Reconsider PreMiningHash
             var disambiguatingHash = blockHeader.IsMined() ? blockHeader.GetHash() : blockHeader.GetPreMiningHash();
             await _transactionResultManager.AddTransactionResultAsync(transactionResult, disambiguatingHash);
         }
@@ -84,6 +85,7 @@ namespace AElf.Kernel.Blockchain.Application
             return null;
         }
 
+        // TODO: Create a new class.
         public async Task HandleEventAsync(NewIrreversibleBlockFoundEvent eventData)
         {
             var blockHash = eventData.BlockHash;

@@ -1,5 +1,3 @@
-using Google.Protobuf;
-
 namespace AElf.Kernel.Infrastructure
 {
     public static class StorageKeyExtensions
@@ -8,28 +6,19 @@ namespace AElf.Kernel.Infrastructure
         {
             return n.ToString();
         }
-        
-        public static string ToStorageKey(this ulong n)
-        {
-            return n.ToString();
-        }
+
         public static string ToStorageKey(this int n)
         {
             return n.ToString();
         }
         public static string ToStorageKey(this Hash hash)
         {
-            return hash?.Value.ToBase64();
+            return hash.Value.ToBase64();
         }
-        
-        public static string ToStorageKey(this ByteString byteString)
+
+        public static string ToStorageKey(this Address address)
         {
-            return byteString?.ToBase64();
-        }
-        
-        public static string ToStorageKey(this Address byteString)
-        {
-            return byteString?.GetFormatted();
+            return address.Value.ToBase64();
         }
     }
 }

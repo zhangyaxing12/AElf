@@ -2,6 +2,7 @@ namespace AElf.Kernel
 {
     public static class LogEventExtensions
     {
+        // TODO: Move to Types
         public static Bloom GetBloom(this LogEvent logEvent)
         {
             var bloom = new Bloom();

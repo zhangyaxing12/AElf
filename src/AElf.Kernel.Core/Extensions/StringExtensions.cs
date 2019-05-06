@@ -2,6 +2,7 @@ using System.Text;
 
 namespace AElf.Kernel
 {
+    // TODO: Move to Types
     public static class StringExtensions
     {
         public static byte[] GetBytes(this string value)

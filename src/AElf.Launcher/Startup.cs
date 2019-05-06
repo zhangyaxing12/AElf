@@ -36,11 +36,11 @@ namespace AElf.Launcher
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-
+            // TODO: See TestLauncher
             var chainType = _configuration.GetValue("ChainType", ChainType.MainChain);
-            var netType = _configuration.GetValue("NetType", NetType.MainNet);
+            var netType = _configuration.GetValue("NetType", NetType.MainNet);// TODO: Remove
 
-            services.GetHostingEnvironment().EnvironmentName = $"{chainType}.{netType}";
+            services.GetHostingEnvironment().EnvironmentName = $"{chainType}.{netType}";// TODO: Remove
 
             switch (chainType)
             {

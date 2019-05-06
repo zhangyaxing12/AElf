@@ -26,8 +26,8 @@ namespace AElf.Kernel.SmartContract.Infrastructure
     {
         private readonly IStateStore<T> _stateStoreImplementation;
 
-        private ConcurrentDictionary<string, T> _cache = new ConcurrentDictionary<string, T>();
-        private ConcurrentQueue<string> _toBeCleanedKeys = new ConcurrentQueue<string>();
+        private readonly ConcurrentDictionary<string, T> _cache = new ConcurrentDictionary<string, T>();
+        private readonly ConcurrentQueue<string> _toBeCleanedKeys = new ConcurrentQueue<string>();
 
         public NotModifiedCachedStateStore(IStateStore<T> stateStoreImplementation)
         {
