@@ -93,6 +93,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in propertyValue.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
+                    Context.LogDebug(()=>$"Structured State: {kv1.Key},{kv1.Value}");
                 }
             }
 

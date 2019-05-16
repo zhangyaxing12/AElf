@@ -58,6 +58,8 @@ namespace AElf.Sdk.CSharp.State
             if (!Equals(_originalValue, _value))
             {
                 stateSet.Writes[Path.ToStateKey(Context.Self)] = ByteString.CopyFrom(SerializationHelper.Serialize(_value));
+                var value = ByteString.CopyFrom(SerializationHelper.Serialize(_value));
+                Context.LogDebug(()=>$"SingletonState: {Path.ToStateKey(Context.Self)},{value}");
             }
 
             return stateSet;

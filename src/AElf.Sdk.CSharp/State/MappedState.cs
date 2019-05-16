@@ -61,6 +61,9 @@ namespace AElf.Sdk.CSharp.State
                 {
                     var key = GetSubStatePath(kv.Key.ToString()).ToStateKey(Context.Self);
                     stateSet.Writes[key] = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
+                    var value = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
+                    
+                    Context.LogDebug(() =>$"Mapped State: {key},{value}");
                 }
             }
 
@@ -125,6 +128,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
+                    Context.LogDebug(()=>$"Mapped State:{kv1.Key},{kv1.Value}");
                 }
             }
 
@@ -176,6 +180,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
+                    Context.LogDebug(()=>$"Mapped State: {kv1.Key},{kv1.Value}");
                 }
             }
 
@@ -227,6 +232,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
+                    Context.LogDebug(()=>$"Mapped State: {kv1.Key},{kv1.Value}");
                 }
             }
 
