@@ -62,8 +62,9 @@ namespace AElf.Sdk.CSharp.State
                     var key = GetSubStatePath(kv.Key.ToString()).ToStateKey(Context.Self);
                     stateSet.Writes[key] = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
                     var value = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
-                    
-                    Context.LogDebug(() =>$"Mapped State: {key},{value}");
+                    Context.LogDebug(() =>$"Mapped State: {kv.Key.ToString()},{kv.Value.Value}");
+                   
+                    Context.LogDebug(() =>$"Mapped State value size : {value.ToByteArray().Length}");
                 }
             }
 
@@ -128,8 +129,10 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    Context.LogDebug(()=>$"Mapped State:{kv1.Key},{kv1.Value}");
+                    var value = kv1.Value;
+                    Context.LogDebug(() =>$"2 keys Mapped State:{kv1.Key}, value size is {value.ToByteArray().Length}");
                 }
+                Context.LogDebug(() =>$"2 keys Mapped State:{kv.Key},{kv.Value}");
             }
 
             return stateSet;
@@ -180,8 +183,11 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    Context.LogDebug(()=>$"Mapped State: {kv1.Key},{kv1.Value}");
-                }
+                    var value = kv1.Value;
+                    Context.LogDebug(() =>$"3 keys Mapped State:{kv1.Key},value size is {value.ToByteArray().Length}");
+                }   
+                
+                Context.LogDebug(() =>$"3 keys Mapped State:{kv.Key},{kv.Value}");
             }
 
             return stateSet;
@@ -232,10 +238,12 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    Context.LogDebug(()=>$"Mapped State: {kv1.Key},{kv1.Value}");
+                    var value = kv1.Value;
+                    Context.LogDebug(() =>$"4 keys Mapped State:{kv1.Key},value size is {value.ToByteArray().Length}");
                 }
+                Context.LogDebug(()=>$"4 keys Mapped State: {kv.Key},{kv.Value}");
             }
-
+      
             return stateSet;
         }
     }
