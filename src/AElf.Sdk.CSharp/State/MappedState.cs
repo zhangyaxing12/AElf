@@ -62,8 +62,14 @@ namespace AElf.Sdk.CSharp.State
                     var key = GetSubStatePath(kv.Key.ToString()).ToStateKey(Context.Self);
                     stateSet.Writes[key] = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
                     var value = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.Value));
+                    Context.LogDebug(() =>$"Current block height: {Context.CurrentHeight}");
                     Context.LogDebug(() =>$"Mapped State: {kv.Key.ToString()},{kv.Value.Value}");
-                   
+                    if (kv.Value.OriginalValue !=null )
+                    {
+                        var originalval = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.OriginalValue));
+                        Context.LogDebug(() =>$"Mapped State original value size : {originalval.ToByteArray().Length}");
+                    }
+
                     Context.LogDebug(() =>$"Mapped State value size : {value.ToByteArray().Length}");
                 }
             }

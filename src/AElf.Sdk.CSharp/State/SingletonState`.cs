@@ -58,9 +58,15 @@ namespace AElf.Sdk.CSharp.State
             if (!Equals(_originalValue, _value))
             {
                 stateSet.Writes[Path.ToStateKey(Context.Self)] = ByteString.CopyFrom(SerializationHelper.Serialize(_value));
+                Context.LogDebug(() =>$"Current block height: {Context.CurrentHeight}");
+                
                 Context.LogDebug(()=>$"SingletonState: {Path.Parts},{_originalValue},{_value}");
+                if (_originalValue !=null )
+                {
+                    var originalval = ByteString.CopyFrom(SerializationHelper.Serialize(_originalValue));
+                    Context.LogDebug(() =>$"SingletonState original value size : {originalval.ToByteArray().Length}");
+                }
                 var value = ByteString.CopyFrom(SerializationHelper.Serialize(_value));;
-               
                 Context.LogDebug(()=>$"SingletonState value size is : {value.ToByteArray().Length}");
             }
 
