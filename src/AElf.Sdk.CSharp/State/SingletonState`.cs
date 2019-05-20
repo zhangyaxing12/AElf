@@ -1,3 +1,4 @@
+using System.Text;
 using AElf.Kernel;
 using Google.Protobuf;
 
@@ -58,13 +59,19 @@ namespace AElf.Sdk.CSharp.State
             if (!Equals(_originalValue, _value))
             {
                 stateSet.Writes[Path.ToStateKey(Context.Self)] = ByteString.CopyFrom(SerializationHelper.Serialize(_value));
-                Context.LogDebug(() =>$"Current block height: {Context.CurrentHeight}");
+                Context.LogDebug(() =>$"Current block height: {Context.CurrentHeight}");     
+                Context.LogDebug(() => $"SingletonState: {Path.Parts}");
+                Context.LogDebug(() => $"SingletonState value type is: {_value.GetType()}");
+                Context.LogDebug(()=>$"SingletonState: key = {Path.Parts}, Original Value = {_originalValue}");
+                Context.LogDebug(()=>$"SingletonState: key = {Path.Parts}, Value = {_value}");
+                var key = Path.ToStateKey(Context.Self);
+                byte[] b=Encoding.Default.GetBytes(key);                 
+                Context.LogDebug(()=>$"SingletonState key size is : {sizeof(byte)*b.Length}");
                 
-                Context.LogDebug(()=>$"SingletonState: {Path.Parts},{_originalValue},{_value}");
                 if (_originalValue !=null )
                 {
-                    var originalval = ByteString.CopyFrom(SerializationHelper.Serialize(_originalValue));
-                    Context.LogDebug(() =>$"SingletonState original value size : {originalval.ToByteArray().Length}");
+                    var originalvalue = ByteString.CopyFrom(SerializationHelper.Serialize(_originalValue));
+                    Context.LogDebug(() =>$"SingletonState original value size : {originalvalue.ToByteArray().Length}");
                 }
                 var value = ByteString.CopyFrom(SerializationHelper.Serialize(_value));;
                 Context.LogDebug(()=>$"SingletonState value size is : {value.ToByteArray().Length}");
