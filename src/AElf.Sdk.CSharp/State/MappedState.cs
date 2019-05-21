@@ -76,10 +76,10 @@ namespace AElf.Sdk.CSharp.State
                     if (kv.Value.OriginalValue !=null )
                     {
                         var originalval = ByteString.CopyFrom(SerializationHelper.Serialize(kv.Value.OriginalValue));
-                        Context.LogDebug(() =>$"MappedState original value size: {originalval.ToByteArray().Length}");
+                        Context.LogDebug(() =>$"MappedState original value size is: {originalval.ToByteArray().Length}");
                     }
 
-                    Context.LogDebug(() =>$"MappedState value size: {value.ToByteArray().Length}");
+                    Context.LogDebug(() =>$"MappedState current value size is: {value.ToByteArray().Length}");
                 }
             }
 

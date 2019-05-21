@@ -62,19 +62,19 @@ namespace AElf.Sdk.CSharp.State
                 Context.LogDebug(() =>$"Current block height: {Context.CurrentHeight}");     
                 Context.LogDebug(() => $"SingletonState: {Path.Parts}");
                 Context.LogDebug(() => $"SingletonState value type is: {_value.GetType()}");
-                Context.LogDebug(()=>$"SingletonState: key = {Path.Parts}, Original Value = {_originalValue}");
-                Context.LogDebug(()=>$"SingletonState: key = {Path.Parts}, Value = {_value}");
+                Context.LogDebug(()=>$"SingletonState: Original Value = {_originalValue}");
+                Context.LogDebug(()=>$"SingletonState: Value = {_value}");
                 var key = Path.ToStateKey(Context.Self);
                 byte[] b=Encoding.Default.GetBytes(key);                 
-                Context.LogDebug(()=>$"SingletonState key size is : {sizeof(byte)*b.Length}");
+                Context.LogDebug(()=>$"SingletonState key size is: {sizeof(byte)*b.Length}");
                 
                 if (_originalValue !=null )
                 {
                     var originalvalue = ByteString.CopyFrom(SerializationHelper.Serialize(_originalValue));
-                    Context.LogDebug(() =>$"SingletonState original value size : {originalvalue.ToByteArray().Length}");
+                    Context.LogDebug(() =>$"SingletonState original value size is: {originalvalue.ToByteArray().Length}");
                 }
                 var value = ByteString.CopyFrom(SerializationHelper.Serialize(_value));;
-                Context.LogDebug(()=>$"SingletonState value size is : {value.ToByteArray().Length}");
+                Context.LogDebug(()=>$"SingletonState current value size is: {value.ToByteArray().Length}");
             }
 
             return stateSet;
