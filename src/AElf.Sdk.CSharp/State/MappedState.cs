@@ -144,13 +144,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    var value = kv1.Value;
-                    var key = kv1.Key;
-                    byte[] b = Encoding.Default.GetBytes(key);
-                    Context.LogDebug(() =>$"2 keys MappedState: {kv1.Key}, key size is {sizeof(byte)*b.Length}, value size is {value.ToByteArray().Length}");
                 }
-                Context.LogDebug(() =>$"2 keys MappedState: {Path.Parts}"); 
-                Context.LogDebug(() =>$"2 keys MappedState: {kv.Key},{kv.Value}");
             }
 
             return stateSet;
@@ -201,13 +195,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    var value = kv1.Value;
-                    var key = kv1.Key;
-                    byte[] b = Encoding.Default.GetBytes(key);
-                    Context.LogDebug(() =>$"3 keys MappedState: {kv1.Key}, key size is {sizeof(byte)*b.Length}, value size is {value.ToByteArray().Length}");
                 }   
-                Context.LogDebug(() =>$"3 keys MappedState: {Path.Parts}");
-                Context.LogDebug(() =>$"3 keys MappedState: {kv.Key},{kv.Value}");
             } 
 
             return stateSet;
@@ -258,13 +246,7 @@ namespace AElf.Sdk.CSharp.State
                 foreach (var kv1 in kv.Value.GetChanges().Writes)
                 {
                     stateSet.Writes[kv1.Key] = kv1.Value;
-                    var value = kv1.Value;
-                    var key = kv1.Key;
-                    byte[] b = Encoding.Default.GetBytes(key);
-                    Context.LogDebug(() =>$"4 keys MappedState: {kv1.Key}, key size is {sizeof(byte)*b.Length}, value size is {value.ToByteArray().Length}");
                 }
-                Context.LogDebug(()=>$"4 keys MappedState: {Path.Parts}");
-                Context.LogDebug(()=>$"4 keys MappedState: {kv.Key},{kv.Value}");
             }
       
             return stateSet;
