@@ -23,21 +23,9 @@
         <ProjectReference Include="..\..\src\AElf.Contracts.TestKit\AElf.Contracts.TestKit.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\AElf.Contracts.TestContract.BasicFunction\AElf.Contracts.TestContract.BasicFunction.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
-        <ProjectReference Include="..\AElf.Contracts.TestContract.BasicSecurity\AElf.Contracts.TestContract.BasicSecurity.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
-        <ProjectReference Include="..\AElf.Contracts.TestContract.BasicUpdate\AElf.Contracts.TestContract.BasicUpdate.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
+        <Contract Include="..\AElf.Contracts.TestContract.BasicFunction\AElf.Contracts.TestContract.BasicFunction.csproj" />
+        <Contract Include="..\AElf.Contracts.TestContract.BasicSecurity\AElf.Contracts.TestContract.BasicSecurity.csproj" />
+        <Contract Include="..\AElf.Contracts.TestContract.BasicUpdate\AElf.Contracts.TestContract.BasicUpdate.csproj" />
     </ItemGroup>
     <ItemGroup>
         <ContractStub Include="..\..\protobuf\acs0.proto">

@@ -27,20 +27,8 @@
         </ContractStub>
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\AElf.Contracts.Consensus.AEDPoS\AElf.Contracts.Consensus.AEDPoS.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
-        <ProjectReference Include="..\AElf.Contracts.CrossChain\AElf.Contracts.CrossChain.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
-        <ProjectReference Include="..\AElf.Contracts.MultiToken\AElf.Contracts.MultiToken.csproj" >
-            <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-            <OutputItemType>Contract</OutputItemType>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ProjectReference>
+        <Contract Include="..\AElf.Contracts.Consensus.AEDPoS\AElf.Contracts.Consensus.AEDPoS.csproj" />
+        <Contract Include="..\AElf.Contracts.CrossChain\AElf.Contracts.CrossChain.csproj" />
+        <Contract Include="..\AElf.Contracts.MultiToken\AElf.Contracts.MultiToken.csproj" />
     </ItemGroup>
 </Project>
