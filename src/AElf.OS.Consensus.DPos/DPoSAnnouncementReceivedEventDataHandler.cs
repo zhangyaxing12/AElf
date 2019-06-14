@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Kernel;
@@ -7,6 +8,7 @@ using AElf.Kernel.Consensus.AEDPoS.Application;
 using AElf.OS.Network.Events;
 using AElf.OS.Network.Infrastructure;
 using AElf.Sdk.CSharp;
+using AElf.Types;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus;
@@ -30,8 +32,6 @@ namespace AElf.OS.Consensus.DPos
 
         public async Task HandleEventAsync(AnnouncementReceivedEventData eventData)
         {
-            //Disable network lib
-            return;
             var irreversibleBlockIndex =
                 await _idpoSLastLastIrreversibleBlockDiscoveryService.FindLastLastIrreversibleBlockAsync(
                     eventData.SenderPubKey);
@@ -102,25 +102,39 @@ namespace AElf.OS.Consensus.DPos
 
             foreach (var block in orderedBlocks)
             {
-                var peersHadBlockAmount = peers.Where(p =>
-                {
-                    p.RecentBlockHeightAndHashMappings.TryGetValue(block.Key, out var hash);
-                    return hash == block.Value;
-                }).Count();
-                if (pubkeyList.Contains(pubKey) &&
-                    _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(block.Key, out var blockHash) &&
-                    blockHash == block.Value)
-                    peersHadBlockAmount++;
-
-                var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
-                if (peersHadBlockAmount >= sureAmount)
-                {
-                    Logger.LogDebug($"LIB found in network layer: height {block.Key}");
-                    return new BlockIndex(block.Value, block.Key);
-                }
+                if (!PeersHasEnoughBlockAmount(block,peers,pubkeyList,pubKey)) continue;
+                
+                var preLibBlock = await _blockchainService.GetBlockByHashAsync(block.Value);
+                if(preLibBlock == null) continue;
+                
+                var previousHeight = block.Key - 1;
+                var previousBlockHash = preLibBlock.Header.PreviousBlockHash;
+                if (!PeersHasEnoughBlockAmount(
+                    new KeyValuePair<long, Hash>(previousHeight, previousBlockHash), peers, pubkeyList,
+                    pubKey)) continue;
+                
+                Logger.LogDebug($"LIB found in network layer: height {previousHeight}");
+                return new BlockIndex(previousBlockHash, previousHeight);
             }
 
             return null;
+        }
+
+        private bool PeersHasEnoughBlockAmount(KeyValuePair<long,Hash> block,List<IPeer> peers,List<string> pubkeyList,string pubKey)
+        {
+            var peersHadBlockAmount = peers.Where(p =>
+            {
+                p.RecentBlockHeightAndHashMappings.TryGetValue(block.Key, out var hash);
+                return hash == block.Value;
+            }).Count();
+            var hasBlock = _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(block.Key, out var blockHash) &&
+                           blockHash == block.Value;
+            if (!hasBlock) return false;
+            if (pubkeyList.Contains(pubKey))
+                peersHadBlockAmount++;
+
+            var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
+            return peersHadBlockAmount >= sureAmount;
         }
     }
 }
