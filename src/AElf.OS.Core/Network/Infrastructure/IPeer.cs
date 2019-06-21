@@ -19,7 +19,7 @@ namespace AElf.OS.Network.Infrastructure
         bool Inbound { get; }
         long StartHeight { get; }
         
-        IReadOnlyDictionary<long, Hash> RecentBlockHeightAndHashMappings { get; }
+        IReadOnlyDictionary<long, AcceptedBlockInfo> RecentBlockHeightAndHashMappings { get; }
         
         IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
 

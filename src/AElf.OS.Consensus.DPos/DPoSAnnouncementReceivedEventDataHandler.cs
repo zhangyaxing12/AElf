@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Kernel;
@@ -92,13 +93,13 @@ namespace AElf.OS.Consensus.DPos
             var peers = _peerPool.GetPeers().Where(p => pubkeyList.Contains(p.PubKey)).ToList();
 
             var pubKey = (await _accountService.GetPublicKeyAsync()).ToHex();
-            if (peers.Count == 0 && !pubkeyList.Contains(pubKey))
-                return null;
-            
+            if (peers.Count == 0 && !pubkeyList.Contains(pubKey)) return null;
+
             var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
-            var hasBlock = _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var blockHash);
+            var hasBlock = _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var blockInfo) && !blockInfo.HasFork;
             if (!hasBlock) return null;
 
+            var blockHash = blockInfo.BlockHash;
             if (!_peerPool.PreLibBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var preLibBlockInfo) ||
                 preLibBlockInfo.BlockHash != blockHash && preLibBlockInfo.PreLibCount < sureAmount)
                 return null;
@@ -106,10 +107,11 @@ namespace AElf.OS.Consensus.DPos
             var peersHadBlockCount = 0;
             foreach (var peer in peers)
             {
-                if (!peer.RecentBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var hash) || hash != blockHash)
+                if (!peer.RecentBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var block) ||
+                    block.BlockHash != blockHash || block.HasFork)
                     continue;
-                if(!peer.PreLibBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var blockInfo) ||
-                    blockInfo.BlockHash != blockHash || blockInfo.PreLibCount < sureAmount)
+                if (!peer.PreLibBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var preLibBlock) ||
+                    preLibBlock.BlockHash != blockHash) // || blockInfo.PreLibCount < sureAmount)
                     continue;
                 peersHadBlockCount++;
             }
@@ -125,8 +127,19 @@ namespace AElf.OS.Consensus.DPos
             };
 
             var tasks = peers.Select(peer => peer.PreLibConfirmAsync(peerPreLibConfirm)).ToList();
-            await Task.WhenAll(tasks);
-            if (tasks.Count(t => t.IsCompleted && t.Result) + 1 < sureAmount) return null;
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch(Exception e)
+            {
+                Logger.LogError(e.Message, e);
+            }
+
+            var confirmCount = tasks.Count(t => !t.IsFaulted && t.Result) + 1;
+            if (confirmCount < sureAmount) return null;
+
             Logger.LogDebug($"LIB found in network layer: height {preLibHeight}");
             return new BlockIndex(blockHash, preLibHeight);
         }

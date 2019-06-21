@@ -12,7 +12,7 @@ namespace AElf.OS.Network.Infrastructure
         List<IPeer> GetPeers(bool includeFailing = false);
         IPeer GetBestPeer();
         
-        IReadOnlyDictionary<long, Hash> RecentBlockHeightAndHashMappings { get; }
+        IReadOnlyDictionary<long, AcceptedBlockInfo> RecentBlockHeightAndHashMappings { get; }
         
         IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
         

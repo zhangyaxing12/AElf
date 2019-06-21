@@ -33,9 +33,9 @@ namespace AElf.OS.Network.Grpc
         private readonly ConcurrentDictionary<string, GrpcPeer> _authenticatedPeers;
 
         public ILocalEventBus EventBus { get; set; }
-        public IReadOnlyDictionary<long, Hash> RecentBlockHeightAndHashMappings { get; }
+        public IReadOnlyDictionary<long, AcceptedBlockInfo> RecentBlockHeightAndHashMappings { get; }
 
-        private readonly ConcurrentDictionary<long, Hash> _recentBlockHeightAndHashMappings;
+        private readonly ConcurrentDictionary<long, AcceptedBlockInfo> _recentBlockHeightAndHashMappings;
         
         public IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
 
@@ -51,8 +51,8 @@ namespace AElf.OS.Network.Grpc
             _blockchainService = blockChainService;
 
             _authenticatedPeers = new ConcurrentDictionary<string, GrpcPeer>();
-            _recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, Hash>();
-            RecentBlockHeightAndHashMappings = new ReadOnlyDictionary<long, Hash>(_recentBlockHeightAndHashMappings);
+            _recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, AcceptedBlockInfo>();
+            RecentBlockHeightAndHashMappings = new ReadOnlyDictionary<long, AcceptedBlockInfo>(_recentBlockHeightAndHashMappings);
             _preLibBlockHeightAndHashMappings = new ConcurrentDictionary<long, PreLibBlockInfo>();
             PreLibBlockHeightAndHashMappings = new ReadOnlyDictionary<long, PreLibBlockInfo>(_preLibBlockHeightAndHashMappings);
 
@@ -292,9 +292,22 @@ namespace AElf.OS.Network.Grpc
         
         public void AddRecentBlockHeightAndHash(long blockHeight,Hash blockHash, bool hasFork)
         {
-            if (hasFork)
-                _preLibBlockHeightAndHashMappings.TryRemove(blockHeight, out _);
-            _recentBlockHeightAndHashMappings[blockHeight] = blockHash;
+            if (_recentBlockHeightAndHashMappings.TryGetValue(blockHeight, out var blockInfo))
+            {
+                if (hasFork || blockInfo.BlockHash != blockHash)
+                {
+                    blockInfo.HasFork = true;
+                }
+            }
+            else
+            {
+                blockInfo = new AcceptedBlockInfo
+                {
+                    BlockHash = blockHash,
+                    HasFork = false
+                };
+            }
+            _recentBlockHeightAndHashMappings[blockHeight] = blockInfo;
             while (_recentBlockHeightAndHashMappings.Count > 20)
             {
                 _recentBlockHeightAndHashMappings.TryRemove(_recentBlockHeightAndHashMappings.Keys.Min(), out _);
@@ -305,9 +318,10 @@ namespace AElf.OS.Network.Grpc
         {
             if (_preLibBlockHeightAndHashMappings.TryGetValue(blockHeight, out var preLibBlockInfo))
             {
-                if(preLibBlockInfo.BlockHash == blockHash && preLibCount > preLibBlockInfo.PreLibCount)
+                if (preLibBlockInfo.BlockHash != blockHash)
+                    return;
+                if(preLibCount > preLibBlockInfo.PreLibCount)
                     preLibBlockInfo.PreLibCount = preLibCount;
-                preLibBlockInfo.BlockHash = blockHash;
             }
             else
             {

@@ -57,8 +57,8 @@ namespace AElf.OS.Network.Grpc
         public bool Inbound { get; }
         public long StartHeight { get; }
 
-        public IReadOnlyDictionary<long, Hash> RecentBlockHeightAndHashMappings { get; }
-        private readonly ConcurrentDictionary<long, Hash> _recentBlockHeightAndHashMappings;
+        public IReadOnlyDictionary<long, AcceptedBlockInfo> RecentBlockHeightAndHashMappings { get; }
+        private readonly ConcurrentDictionary<long, AcceptedBlockInfo> _recentBlockHeightAndHashMappings;
         
 
         public IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
@@ -79,8 +79,8 @@ namespace AElf.OS.Network.Grpc
             Inbound = peerInfo.IsInbound;
             StartHeight = peerInfo.StartHeight;
 
-            _recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, Hash>();
-            RecentBlockHeightAndHashMappings = new ReadOnlyDictionary<long, Hash>(_recentBlockHeightAndHashMappings);
+            _recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, AcceptedBlockInfo>();
+            RecentBlockHeightAndHashMappings = new ReadOnlyDictionary<long, AcceptedBlockInfo>(_recentBlockHeightAndHashMappings);
             
             _preLibBlockHeightAndHashMappings = new ConcurrentDictionary<long, PreLibBlockInfo>();
             PreLibBlockHeightAndHashMappings = new ReadOnlyDictionary<long, PreLibBlockInfo>(_preLibBlockHeightAndHashMappings);
@@ -174,7 +174,7 @@ namespace AElf.OS.Network.Grpc
         {
             var request = new GrpcRequest
             {
-                ErrorMessage = $"Broadcast announce for {peerPreLibAnnouncement.BlockHash} failed.",
+                ErrorMessage = $"Broadcast pre lib for {peerPreLibAnnouncement.BlockHash} failed.",
                 MetricName = nameof(MetricNames.PreLibAnnounce),
                 MetricInfo = $"Block hash {peerPreLibAnnouncement.BlockHash}"
             };
@@ -329,11 +329,23 @@ namespace AElf.OS.Network.Grpc
         {
             CurrentBlockHeight = peerNewBlockAnnouncement.BlockHeight;
             CurrentBlockHash = peerNewBlockAnnouncement.BlockHash;
-            if (peerNewBlockAnnouncement.HasFork)
+            if (_recentBlockHeightAndHashMappings.TryGetValue(CurrentBlockHeight, out var blockInfo))
             {
-                _preLibBlockHeightAndHashMappings.TryRemove(CurrentBlockHeight, out _);
+                if (peerNewBlockAnnouncement.HasFork || blockInfo.BlockHash != CurrentBlockHash)
+                {
+                    blockInfo.HasFork = true;
+                }
             }
-            _recentBlockHeightAndHashMappings[CurrentBlockHeight] = CurrentBlockHash;
+            else
+            {
+                blockInfo = new AcceptedBlockInfo
+                {
+                    BlockHash = CurrentBlockHash,
+                    HasFork = false
+                };
+            }
+            
+            _recentBlockHeightAndHashMappings[CurrentBlockHeight] = blockInfo;
             while (_recentBlockHeightAndHashMappings.Count > 20)
             {
                 _recentBlockHeightAndHashMappings.TryRemove(_recentBlockHeightAndHashMappings.Keys.Min(), out _);
@@ -347,9 +359,10 @@ namespace AElf.OS.Network.Grpc
             var preLibCount = peerPreLibAnnouncement.PreLibCount;
             if (_preLibBlockHeightAndHashMappings.TryGetValue(blockHeight, out var preLibBlockInfo))
             {
-                if(preLibBlockInfo.BlockHash == blockHash && preLibCount > preLibBlockInfo.PreLibCount)
+                if (preLibBlockInfo.BlockHash != blockHash)
+                    return;
+                if(preLibCount > preLibBlockInfo.PreLibCount)
                     preLibBlockInfo.PreLibCount = preLibCount;
-                preLibBlockInfo.BlockHash = blockHash;
             }
             else
             {
