@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using AElf.Common;
 using AElf.Cryptography;
 using AElf.Kernel;
 using AElf.Kernel.Blockchain.Application;
@@ -28,7 +27,7 @@ namespace AElf.OS.Consensus.DPos
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_IsNull()
         {
             var sendKey = string.Empty;
-            var announcementData = new PreLibAnnouncementReceivedEventData(sendKey);
+            var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
 
             await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
         }
@@ -37,7 +36,7 @@ namespace AElf.OS.Consensus.DPos
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_SureAmountNotEnough()
         {
             var sendKey = CryptoHelpers.GenerateKeyPair().PublicKey.ToHex();
-            var announcementData = new PreLibAnnouncementReceivedEventData(sendKey);
+            var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
 
             await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
         }
@@ -46,7 +45,7 @@ namespace AElf.OS.Consensus.DPos
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_SureAmountEnough()
         {
             var sendKey = CryptoHelpers.GenerateKeyPair().PublicKey.ToHex();
-            var announcementData = new PreLibAnnouncementReceivedEventData(sendKey);
+            var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
 
             await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
         }

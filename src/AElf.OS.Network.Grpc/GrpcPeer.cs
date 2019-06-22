@@ -7,13 +7,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using AElf.Kernel;
 using AElf.OS.Network.Application;
-using AElf.OS.Network.Events;
 using AElf.OS.Network.Infrastructure;
 using AElf.OS.Network.Types;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Volo.Abp.EventBus.Local;
 
 namespace AElf.OS.Network.Grpc
 {
@@ -184,21 +182,18 @@ namespace AElf.OS.Network.Grpc
             return RequestAsync(_client, c => c.PreLibAnnounceAsync(peerPreLibAnnouncement, data), request);
         }
 
-        public async Task<bool> PreLibConfirmAsync(PeerPreLibConfirm peerPreLibConfirm)
+        public Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement)
         {
             var request = new GrpcRequest
             {
-                ErrorMessage = $"Pre lib confirm for {peerPreLibConfirm.BlockHash} failed.",
+                ErrorMessage = $"Broadcast pre lib confirm for {peerPreLibConfirmAnnouncement.BlockHash} failed.",
                 MetricName = nameof(MetricNames.GetBlock),
-                MetricInfo = $"Pre lib confirm for {peerPreLibConfirm.BlockHash}"
+                MetricInfo = $"Block hash {peerPreLibConfirmAnnouncement.BlockHash}"
             };
 
             var data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
 
-            var preLibConfirmReply 
-                = await RequestAsync(_client, c => c.PreLibConfirmAsync(peerPreLibConfirm, data), request);
-
-            return preLibConfirmReply?.Confirm ?? false;
+            return RequestAsync(_client, c => c.PreLibConfirmAnnounceAsync(peerPreLibConfirmAnnouncement, data), request);
         }
 
         public Task SendTransactionAsync(Transaction tx)
@@ -378,6 +373,18 @@ namespace AElf.OS.Network.Grpc
             {
                 _preLibBlockHeightAndHashMappings.TryRemove(_preLibBlockHeightAndHashMappings.Keys.Min(), out _);
             }
+        }
+
+        public bool HasBlock(long blockHeight, Hash blockHash)
+        {
+            return _recentBlockHeightAndHashMappings.TryGetValue(blockHeight, out var blockInfo) &&
+                   blockInfo.BlockHash == blockHash && !blockInfo.HasFork;
+        }
+
+        public bool HasPreLib(long blockHeight, Hash blockHash)
+        {
+            return _preLibBlockHeightAndHashMappings.TryGetValue(blockHeight, out var preLibBlockInfo) &&
+                preLibBlockInfo.BlockHash == blockHash;
         }
 
         public async Task SendDisconnectAsync()

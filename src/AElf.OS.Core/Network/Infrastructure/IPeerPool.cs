@@ -28,5 +28,9 @@ namespace AElf.OS.Network.Infrastructure
         void AddRecentBlockHeightAndHash(long blockHeight, Hash blockHash, bool hasFork);
 
         void AddPreLibBlockHeightAndHash(long blockHeight, Hash blockHash,int preLibCount);
+        
+        bool HasBlock(long blockHeight, Hash blockHash);
+
+        bool HasPreLib(long blockHeight, Hash blockHash);
     }
 }

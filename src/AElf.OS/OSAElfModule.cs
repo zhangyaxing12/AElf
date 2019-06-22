@@ -32,6 +32,7 @@ namespace AElf.OS
 
             context.Services.AddSingleton<PeerConnectedEventHandler>();
             context.Services.AddSingleton<AnnouncementReceivedEventHandler>();
+            context.Services.AddSingleton<PreLibAnnouncementReceivedEventHandler>();
 
             //TODO: make ApplicationHelper as a provider, inject it into key store
             var keyStore = new AElfKeyStore(ApplicationHelper.AppDataPath);

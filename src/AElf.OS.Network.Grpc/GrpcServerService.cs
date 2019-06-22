@@ -1,16 +1,13 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using AElf.Cryptography;
 using AElf.Kernel;
 using AElf.Kernel.Account.Application;
 using AElf.Kernel.Blockchain.Application;
-using AElf.Kernel.Consensus.AEDPoS.Application;
 using AElf.Kernel.TransactionPool.Infrastructure;
 using AElf.OS.Network.Events;
 using AElf.OS.Network.Extensions;
 using AElf.OS.Network.Infrastructure;
-using AElf.Sdk.CSharp;
 using AElf.Types;
 using Google.Protobuf;
 using Grpc.Core;
@@ -35,18 +32,15 @@ namespace AElf.OS.Network.Grpc
         private readonly IPeerPool _peerPool;
         private readonly IBlockchainService _blockchainService;
         private readonly IAccountService _accountService;
-        private readonly IAEDPoSInformationProvider _dpoSInformationProvider;
 
         public ILocalEventBus EventBus { get; set; }
         public ILogger<GrpcServerService> Logger { get; set; }
 
-        public GrpcServerService(IPeerPool peerPool, IBlockchainService blockchainService, IAccountService accountService,
-            IAEDPoSInformationProvider dpoSInformationProvider)
+        public GrpcServerService(IPeerPool peerPool, IBlockchainService blockchainService, IAccountService accountService)
         {
             _peerPool = peerPool;
             _blockchainService = blockchainService;
             _accountService = accountService;
-            _dpoSInformationProvider = dpoSInformationProvider;
 
             EventBus = NullLocalEventBus.Instance;
             Logger = NullLogger<GrpcServerService>.Instance;
@@ -226,44 +220,36 @@ namespace AElf.OS.Network.Grpc
             peerInPool?.HandlerRemotePreLibAnnounce(request);
 
             Logger.LogTrace("Publish event for pre lib announcement received..");
-            _ = EventBus.PublishAsync(new PreLibAnnouncementReceivedEventData(context.GetPublicKey()));
+            _ = EventBus.PublishAsync(new PreLibAnnouncementReceivedEventData(request, context.GetPublicKey()));
 
-            Logger.LogTrace("Finish event publish.");
+            Logger.LogTrace("Finish event for pre lib announcement publish.");
             
             return Task.FromResult(new VoidReply());
         }
 
-        public override async Task<PeerPreLibConfirmReply> PreLibConfirm(PeerPreLibConfirm request, ServerCallContext context)
+        public override Task<VoidReply> PreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
         {
-            var hasBlock =
-                _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(request.BlockHeight, out var blockInfo) &&
-                blockInfo.BlockHash == request.BlockHash && !blockInfo.HasFork;
-            if (!hasBlock) return new PeerPreLibConfirmReply {Confirm = false};
-            
-            var chain = await _blockchainService.GetChainAsync();
-            var chainContext = new ChainContext {BlockHash = chain.BestChainHash, BlockHeight = chain.BestChainHeight};
-            var pubkeyList = (await _dpoSInformationProvider.GetCurrentMinerList(chainContext)).ToList();
-            var peers = _peerPool.GetPeers().Where(p => pubkeyList.Contains(p.PubKey)).ToList();
-            var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
-            
-            var hasPreLib =
-                _peerPool.PreLibBlockHeightAndHashMappings.TryGetValue(request.BlockHeight, out var preLibBlockInfo) &&
-                preLibBlockInfo.BlockHash == request.BlockHash;
-            if (!hasPreLib) return new PeerPreLibConfirmReply {Confirm = false};
+            Logger.LogDebug($"Received pre lib confirm {request.BlockHash} from {context.GetPeerInfo()}.");
 
-            var peersHadBlockCount = 0;
-            foreach (var peer in peers)
+            if (request?.BlockHash == null)
             {
-                if (!peer.RecentBlockHeightAndHashMappings.TryGetValue(request.BlockHeight, out blockInfo) ||
-                    blockInfo.BlockHash != request.BlockHash || blockInfo.HasFork)
-                    continue;
-                if (!peer.PreLibBlockHeightAndHashMappings.TryGetValue(request.BlockHeight, out preLibBlockInfo) ||
-                    preLibBlockInfo.BlockHash != request.BlockHash)
-                    continue;
-                peersHadBlockCount++;
+                Logger.LogError($"Received null pre lib confirm or header from {context.GetPeerInfo()}.");
+                return Task.FromResult(new VoidReply());
             }
             
-            return new PeerPreLibConfirmReply {Confirm = peersHadBlockCount + 1 >= sureAmount};
+            var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
+            peerInPool?.HandlerRemotePreLibAnnounce(new PeerPreLibAnnouncement
+            {
+                BlockHash = request.BlockHash,
+                BlockHeight = request.BlockHeight,
+                PreLibCount = request.PreLibCount
+            });
+            
+            Logger.LogTrace("Publish event for pre lib confirm announcement received..");
+            _ = EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
+            Logger.LogTrace("Finish event for pre lib confirm announcement publish.");
+            
+            return Task.FromResult(new VoidReply());
         }
 
         /// <summary>

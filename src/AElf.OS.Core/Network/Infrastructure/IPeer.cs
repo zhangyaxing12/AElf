@@ -29,6 +29,10 @@ namespace AElf.OS.Network.Infrastructure
         
         void HandlerRemotePreLibAnnounce(PeerPreLibAnnouncement peerPreLibAnnouncement);
 
+        bool HasBlock(long blockHeight, Hash blockHash);
+
+        bool HasPreLib(long blockHeight, Hash blockHash);
+
         Task<bool> TryWaitForStateChangedAsync();
         
         Task SendDisconnectAsync();
@@ -36,7 +40,7 @@ namespace AElf.OS.Network.Infrastructure
 
         Task AnnounceAsync(PeerNewBlockAnnouncement an);
         Task PreLibAnnounceAsync(PeerPreLibAnnouncement peerPreLibAnnouncement);
-        Task<bool> PreLibConfirmAsync(PeerPreLibConfirm peerPreLibConfirm);
+        Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement);
         Task SendTransactionAsync(Transaction tx);
         Task<BlockWithTransactions> RequestBlockAsync(Hash hash);
         Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousHash, int count);

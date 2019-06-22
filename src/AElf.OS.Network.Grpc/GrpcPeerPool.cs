@@ -17,7 +17,6 @@ using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Volo.Abp.EventBus;
 using Volo.Abp.EventBus.Local;
 using Volo.Abp.Threading;
 
@@ -336,6 +335,18 @@ namespace AElf.OS.Network.Grpc
             {
                 _preLibBlockHeightAndHashMappings.TryRemove(_preLibBlockHeightAndHashMappings.Keys.Min(), out _);
             }
+        }
+        
+        public bool HasBlock(long blockHeight, Hash blockHash)
+        {
+            return _recentBlockHeightAndHashMappings.TryGetValue(blockHeight, out var blockInfo) &&
+                   blockInfo.BlockHash == blockHash && !blockInfo.HasFork;
+        }
+
+        public bool HasPreLib(long blockHeight, Hash blockHash)
+        {
+            return _preLibBlockHeightAndHashMappings.TryGetValue(blockHeight, out var preLibBlockInfo) &&
+                   preLibBlockInfo.BlockHash == blockHash;
         }
     }
 }

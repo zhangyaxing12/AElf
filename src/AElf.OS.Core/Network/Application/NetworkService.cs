@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using AElf.Kernel;
 using AElf.OS.Network.Infrastructure;
@@ -83,9 +81,7 @@ namespace AElf.OS.Network.Application
         {
             var successfulBcasts = 0;
 
-            var hasBlock = _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeight, out var blockInfo) &&
-                           blockInfo.BlockHash == blockHash && !blockInfo.HasFork;
-            if (!hasBlock) return successfulBcasts;
+            if (!_peerPool.HasBlock(blockHeight,blockHash)) return successfulBcasts;
 
             var announce = new PeerPreLibAnnouncement
             {
@@ -110,6 +106,39 @@ namespace AElf.OS.Network.Application
             }
 
             Logger.LogDebug("Broadcast pre lib successful !");
+
+            return successfulBcasts;
+        }
+
+        public async Task<int> BroadcastPreLibConfirmAnnounceAsync(long blockHeight, Hash blockHash, int preLibCount)
+        {
+            var successfulBcasts = 0;
+
+            if (!_peerPool.HasBlock(blockHeight,blockHash)) return successfulBcasts;
+
+            var preLibConfirm = new PeerPreLibConfirmAnnouncement
+            {
+                BlockHash = blockHash,
+                BlockHeight = blockHeight,
+                PreLibCount = preLibCount
+            };
+
+            var peers = _peerPool.GetPeers().ToList();
+
+            _peerPool.AddPreLibBlockHeightAndHash(blockHeight, blockHash, preLibCount);
+
+            Logger.LogDebug("About to broadcast pre lib confirm to peers.");
+
+            var tasks = peers.Select(peer => DoPreLibConfirmAnnounceAsync(peer, preLibConfirm)).ToList();
+            await Task.WhenAll(tasks);
+
+            foreach (var finishedTask in tasks.Where(t => t.IsCompleted))
+            {
+                if (finishedTask.Result)
+                    successfulBcasts++;
+            }
+
+            Logger.LogDebug("Broadcast pre lib confirm successful !");
 
             return successfulBcasts;
         }
@@ -143,9 +172,29 @@ namespace AElf.OS.Network.Application
 
                 return true;
             }
-            catch (NetworkException e)
+            catch (NetworkException ex)
             {
-                Logger.LogError(e, "Error while sending block.");
+                Logger.LogError(ex, "Error while announcing pre lib.");
+                await HandleNetworkException(peer, ex);
+            }
+
+            return false;
+        }
+        
+        private async Task<bool> DoPreLibConfirmAnnounceAsync(IPeer peer, PeerPreLibConfirmAnnouncement preLibConfirmAnnouncement)
+        {
+            try
+            {
+                Logger.LogDebug($"Before broadcast pre lib confirm {preLibConfirmAnnouncement.BlockHash} to {peer}.");
+                await peer.PreLibConfirmAnnounceAsync(preLibConfirmAnnouncement);
+                Logger.LogDebug($"After broadcast pre lib confirm {preLibConfirmAnnouncement.BlockHash} to {peer}.");
+
+                return true;
+            }
+            catch (NetworkException ex)
+            {
+                Logger.LogError(ex, "Error while announcing pre lib confirm.");
+                await HandleNetworkException(peer, ex);
             }
 
             return false;
