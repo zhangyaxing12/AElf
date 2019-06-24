@@ -127,7 +127,7 @@ namespace AElf.OS.Network.Application
 
             _peerPool.AddPreLibBlockHeightAndHash(blockHeight, blockHash, preLibCount);
 
-            Logger.LogDebug("About to broadcast pre lib confirm to peers.");
+       //     Logger.LogDebug("About to broadcast pre lib confirm to peers.");
 
             var tasks = peers.Select(peer => DoPreLibConfirmAnnounceAsync(peer, preLibConfirm)).ToList();
             await Task.WhenAll(tasks);
@@ -138,7 +138,7 @@ namespace AElf.OS.Network.Application
                     successfulBcasts++;
             }
 
-            Logger.LogDebug("Broadcast pre lib confirm successful !");
+    //        Logger.LogDebug("Broadcast pre lib confirm successful !");
 
             return successfulBcasts;
         }
@@ -168,7 +168,7 @@ namespace AElf.OS.Network.Application
             {
                 Logger.LogDebug($"Before broadcast pre lib {announce.BlockHash} to {peer}.");
                 await peer.PreLibAnnounceAsync(announce);
-                Logger.LogDebug($"After broadcast pre lib {announce.BlockHash} to {peer}.");
+             //   Logger.LogDebug($"After broadcast pre lib {announce.BlockHash} to {peer}.");
 
                 return true;
             }
@@ -187,13 +187,13 @@ namespace AElf.OS.Network.Application
             {
                 Logger.LogDebug($"Before broadcast pre lib confirm {preLibConfirmAnnouncement.BlockHash} to {peer}.");
                 await peer.PreLibConfirmAnnounceAsync(preLibConfirmAnnouncement);
-                Logger.LogDebug($"After broadcast pre lib confirm {preLibConfirmAnnouncement.BlockHash} to {peer}.");
+       //         Logger.LogDebug($"After broadcast pre lib confirm {preLibConfirmAnnouncement.BlockHash} to {peer}.");
 
                 return true;
             }
             catch (NetworkException ex)
             {
-                Logger.LogError(ex, "Error while announcing pre lib confirm.");
+               // Logger.LogError(ex, "Error while announcing pre lib confirm.");
                 await HandleNetworkException(peer, ex);
             }
 
