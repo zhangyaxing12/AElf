@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.Kernel;
@@ -5,6 +6,7 @@ using AElf.Modularity;
 using AElf.OS.Network;
 using AElf.OS.Network.Application;
 using AElf.OS.Network.Infrastructure;
+using AElf.OS.Network.Types;
 using AElf.Types;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -22,6 +24,8 @@ namespace AElf.OS
             
             Mock<IPeerPool> peerPoolMock = new Mock<IPeerPool>();
             var p3 = new Mock<IPeer>();
+            
+            var recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, AcceptedBlockInfo>();
 
             peerPoolMock.Setup(p => p.GetBestPeer()).Returns(p3.Object);
                 
@@ -89,6 +93,15 @@ namespace AElf.OS
                     
                     return peers;
                 });
+            
+            peerPoolMock.Setup(p => p.AddRecentBlockHeightAndHash(It.IsAny<long>(), It.IsAny<Hash>(), It.IsAny<bool>
+                ())).Callback<long, Hash, bool>((blockHeight, blockHash, hasFork) =>
+                {
+                    recentBlockHeightAndHashMappings[blockHeight] = new AcceptedBlockInfo
+                        {BlockHash = blockHash, HasFork = hasFork};
+                });
+
+            peerPoolMock.Setup(p => p.RecentBlockHeightAndHashMappings).Returns(recentBlockHeightAndHashMappings);
             
             context.Services.AddSingleton<IPeerPool>(o => peerPoolMock.Object);
         }
