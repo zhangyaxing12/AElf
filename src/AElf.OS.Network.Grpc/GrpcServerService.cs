@@ -219,10 +219,10 @@ namespace AElf.OS.Network.Grpc
             var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
             peerInPool?.HandlerRemotePreLibAnnounce(request);
 
-            Logger.LogTrace("Publish event for pre lib announcement received..");
+            //Logger.LogTrace("Publish event for pre lib announcement received..");
             _ = EventBus.PublishAsync(new PreLibAnnouncementReceivedEventData(request, context.GetPublicKey()));
 
-            Logger.LogTrace("Finish event for pre lib announcement publish.");
+            //Logger.LogTrace("Finish event for pre lib announcement publish.");
             
             return Task.FromResult(new VoidReply());
         }
@@ -245,9 +245,9 @@ namespace AElf.OS.Network.Grpc
                 PreLibCount = request.PreLibCount
             });
             
-            Logger.LogTrace("Publish event for pre lib confirm announcement received..");
-            _ = EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
-            Logger.LogTrace("Finish event for pre lib confirm announcement publish.");
+            //Logger.LogTrace("Publish event for pre lib confirm announcement received..");
+            //_ = EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
+            //Logger.LogTrace("Finish event for pre lib confirm announcement publish.");
             
             return Task.FromResult(new VoidReply());
         }
