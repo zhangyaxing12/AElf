@@ -102,7 +102,7 @@ namespace AElf.OS.Network.Application
 
             _peerPool.AddPreLibBlockHeightAndHash(announce.BlockHeight, announce.BlockHash, preLibCount);
 
-            Logger.LogDebug("About to broadcast pre lib to peers.");
+            //Logger.LogDebug("About to broadcast pre lib to peers.");
 
             var tasks = peers.Select(peer => DoPreLibAnnounce(peer, announce)).ToList();
             await Task.WhenAll(tasks);
@@ -113,7 +113,7 @@ namespace AElf.OS.Network.Application
                     successfulBcasts++;
             }
 
-            Logger.LogDebug("Broadcast pre lib successful !");
+            //Logger.LogDebug("Broadcast pre lib successful !");
 
             return successfulBcasts;
         }
@@ -157,7 +157,7 @@ namespace AElf.OS.Network.Application
             {
                 Logger.LogDebug($"Before broadcast {announce.BlockHash} to {peer}.");
                 await peer.AnnounceAsync(announce);
-                Logger.LogDebug($"After broadcast {announce.BlockHash} to {peer}.");
+                //Logger.LogDebug($"After broadcast {announce.BlockHash} to {peer}.");
 
                 return true;
             }
@@ -182,7 +182,7 @@ namespace AElf.OS.Network.Application
             }
             catch (NetworkException ex)
             {
-                Logger.LogError(ex, "Error while announcing pre lib.");
+               // Logger.LogError(ex, "Error while announcing pre lib.");
                 await HandleNetworkException(peer, ex);
             }
 
@@ -222,7 +222,7 @@ namespace AElf.OS.Network.Application
                 }
                 catch (NetworkException ex)
                 {
-                    Logger.LogError(ex, "Error while sending transaction.");
+                    //Logger.LogError(ex, "Error while sending transaction.");
                     await HandleNetworkException(peer, ex);
                 }
             }
