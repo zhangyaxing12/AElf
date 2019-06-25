@@ -51,8 +51,8 @@ namespace AElf.OS.Network.Application
             int successfulBcasts = 0;
             
             var blockHash = blockHeader.GetHash();
-            if (_peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeader.Height, out var recentBlockHash) &&
-                recentBlockHash == blockHash)
+            if (_peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeader.Height, out var recentBlock) &&
+                recentBlock.BlockHash == blockHash)
             {
                 Logger.LogDebug($"BlockHeight: {blockHeader.Height}, BlockHash: {blockHash} has been broadcast.");
                 return successfulBcasts;
