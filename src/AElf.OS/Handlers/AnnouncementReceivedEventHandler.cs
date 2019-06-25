@@ -59,7 +59,7 @@ namespace AElf.OS.Handlers
                 peers.Count(p => p.HasBlock(blockHeight, blockHash) && p.HasPreLib(blockHeight, blockHash));
             if (pubkeyList.Contains(pubKey))
                 peersHadPreLibAmount++;
-            var _ = _networkService.BroadcastPreLibAnnounceAsync(blockHeight, blockHash, peersHadPreLibAmount);
+            //var _ = _networkService.BroadcastPreLibAnnounceAsync(blockHeight, blockHash, peersHadPreLibAmount);
         }
     }
 }
