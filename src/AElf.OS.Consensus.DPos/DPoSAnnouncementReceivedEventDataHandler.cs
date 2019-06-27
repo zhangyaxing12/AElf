@@ -82,7 +82,7 @@ namespace AElf.OS.Consensus.DPos
         {
             var chain = await _blockchainService.GetChainAsync();
             
-            var preLibHeight = chain.BestChainHeight - 10;
+            var preLibHeight = chain.BestChainHeight - 30;
             if (preLibHeight <= chain.LastIrreversibleBlockHeight) return null;
             
             var chainContext = new ChainContext {BlockHash = chain.BestChainHash, BlockHeight = chain.BestChainHeight};

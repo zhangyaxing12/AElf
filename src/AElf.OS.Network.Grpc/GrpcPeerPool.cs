@@ -307,7 +307,7 @@ namespace AElf.OS.Network.Grpc
                 };
             }
             _recentBlockHeightAndHashMappings[blockHeight] = blockInfo;
-            while (_recentBlockHeightAndHashMappings.Count > 20)
+            while (_recentBlockHeightAndHashMappings.Count > 40)
             {
                 _recentBlockHeightAndHashMappings.TryRemove(_recentBlockHeightAndHashMappings.Keys.Min(), out _);
             }
@@ -331,7 +331,7 @@ namespace AElf.OS.Network.Grpc
                 };
             }
             _preLibBlockHeightAndHashMappings[blockHeight] = preLibBlockInfo;
-            while (_preLibBlockHeightAndHashMappings.Count > 20)
+            while (_preLibBlockHeightAndHashMappings.Count > 40)
             {
                 _preLibBlockHeightAndHashMappings.TryRemove(_preLibBlockHeightAndHashMappings.Keys.Min(), out _);
             }
