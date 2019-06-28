@@ -23,8 +23,8 @@ namespace AElf.OS.Network.Infrastructure
         
         IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
 
-        bool CanBroadcastTransactions { get; }
-        bool CanBroadcastAnnounces { get; }
+        bool CanStreamTransactions { get; }
+        bool CanStreamAnnounces { get; }
 
         void StartTransactionStreaming();
         void StartAnnouncementStreaming();
@@ -40,7 +40,8 @@ namespace AElf.OS.Network.Infrastructure
         bool HasPreLib(long blockHeight, Hash blockHash);
 
         Task<bool> TryWaitForStateChangedAsync();
-        
+
+        Task FinalizeConnectAsync();
         Task SendDisconnectAsync();
         Task StopAsync();
 

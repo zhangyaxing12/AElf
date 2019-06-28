@@ -19,6 +19,7 @@ service PeerService {
     rpc AnnouncementBroadcastStream (stream PeerNewBlockAnnouncement) returns (VoidReply) {}
 
     rpc Connect (Handshake) returns (ConnectReply) {}
+    rpc FinalizeConnect (Handshake) returns (VoidReply) {}
     
     rpc Disconnect (DisconnectReason) returns (VoidReply) {}
 }
