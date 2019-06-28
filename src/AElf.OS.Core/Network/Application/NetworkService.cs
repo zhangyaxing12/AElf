@@ -46,14 +46,14 @@ namespace AElf.OS.Network.Application
             return _peerPool.GetPeers(true).ToList(); 
         }
 
-        public Task BroadcastAnnounceAsync(BlockHeader blockHeader, bool hasFork)
+        public void BroadcastAnnounce(BlockHeader blockHeader, bool hasFork)
         {
             var blockHash = blockHeader.GetHash();
             if (_peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeader.Height, out var recentBlock) &&
                 recentBlock.BlockHash == blockHash)
             {
                 Logger.LogDebug($"BlockHeight: {blockHeader.Height}, BlockHash: {blockHash} has been broadcast.");
-                return Task.CompletedTask;
+                return;
             }
             
             _peerPool.AddRecentBlockHeightAndHash(blockHeader.Height, blockHash, hasFork);
@@ -81,8 +81,6 @@ namespace AElf.OS.Network.Application
                 }
                 
             }, NetworkConstants.AnnouncementBroadcastQueueName);
-
-            return Task.CompletedTask;
         }
 
         public Task BroadcastPreLibAnnounceAsync(long blockHeight, Hash blockHash,int preLibCount)
@@ -149,7 +147,7 @@ namespace AElf.OS.Network.Application
            return Task.CompletedTask;
         }
         
-        public Task BroadcastTransactionAsync(Transaction tx)
+        public void BroadcastTransaction(Transaction tx)
         {
             _taskQueueManager.Enqueue(async () =>
             {
@@ -167,8 +165,6 @@ namespace AElf.OS.Network.Application
                 }
                 
             }, NetworkConstants.TransactionBroadcastQueueName);
-            
-            return Task.CompletedTask;
         }
 
         public async Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousBlock, int count, 

@@ -14,10 +14,10 @@ namespace AElf.OS.Network.Application
         List<string> GetPeerIpList();
         List<IPeer> GetPeers();
         Task<BlockWithTransactions> GetBlockByHashAsync(Hash hash, string peer = null);
-        Task BroadcastAnnounceAsync(BlockHeader blockHeader, bool hasFork);
+        void BroadcastAnnounce(BlockHeader blockHeader, bool hasFork);
         Task BroadcastPreLibAnnounceAsync(long blockHeight, Hash blockHash, int preLibCount);
         Task BroadcastPreLibConfirmAnnounceAsync(long blockHeight, Hash blockHash, int preLibCount);
-        Task BroadcastTransactionAsync(Transaction tx);
+        void BroadcastTransaction(Transaction tx);
         Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousBlock, int count, string peerPubKey = null);
         Task<long> GetBestChainHeightAsync(string peerPubKey = null);
         
