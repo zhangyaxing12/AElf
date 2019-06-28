@@ -25,9 +25,13 @@ namespace AElf.OS.Network.Infrastructure
 
         bool CanStreamTransactions { get; }
         bool CanStreamAnnounces { get; }
+        bool CanStreamPreLibAnnounces { get; }
+        bool CanStreamPreLibConfirmAnnounces { get;}
 
         void StartTransactionStreaming();
         void StartAnnouncementStreaming();
+        void StartPreLibAnnouncementStreaming();
+        void StartPreLibConfirmAnnouncementStreaming();
 
         Dictionary<string, List<RequestMetric>> GetRequestMetrics();
 

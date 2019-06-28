@@ -17,6 +17,8 @@ service PeerService {
 
     rpc TransactionBroadcastStream (stream aelf.Transaction) returns (VoidReply) {}
     rpc AnnouncementBroadcastStream (stream PeerNewBlockAnnouncement) returns (VoidReply) {}
+    rpc PreLibAnnounceStream (stream PeerPreLibAnnouncement) returns (VoidReply) {}
+    rpc PreLibConfirmAnnounceStream(stream PeerPreLibConfirmAnnouncement) returns (VoidReply) {}
 
     rpc Connect (Handshake) returns (ConnectReply) {}
     rpc FinalizeConnect (Handshake) returns (VoidReply) {}

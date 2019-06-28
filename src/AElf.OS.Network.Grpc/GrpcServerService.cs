@@ -179,6 +179,8 @@ namespace AElf.OS.Network.Grpc
             
             peerInPool.StartAnnouncementStreaming();
             peerInPool.StartTransactionStreaming();
+            peerInPool.StartPreLibAnnouncementStreaming();
+            peerInPool.StartPreLibConfirmAnnouncementStreaming();
 
             return Task.FromResult(new VoidReply());
         }
@@ -186,6 +188,18 @@ namespace AElf.OS.Network.Grpc
         public override async Task<VoidReply> AnnouncementBroadcastStream(IAsyncStreamReader<PeerNewBlockAnnouncement> requestStream, ServerCallContext context)
         {
             await requestStream.ForEachAsync(async r => await ProcessAnnouncement(r, context));
+            return new VoidReply();
+        }
+
+        public override async Task<VoidReply> PreLibAnnounceStream(IAsyncStreamReader<PeerPreLibAnnouncement> requestStream, ServerCallContext context)
+        {
+            await requestStream.ForEachAsync(async preLibAnnounce => await ProcessPreLibAnnounce(preLibAnnounce, context));
+            return new VoidReply();
+        }
+
+        public override async Task<VoidReply> PreLibConfirmAnnounceStream(IAsyncStreamReader<PeerPreLibConfirmAnnouncement> requestStream, ServerCallContext context)
+        {
+            await requestStream.ForEachAsync(async preLibConfirmAnnounce => await ProcessPreLibConfirmAnnounce(preLibConfirmAnnounce, context));
             return new VoidReply();
         }
 
@@ -242,36 +256,46 @@ namespace AElf.OS.Network.Grpc
             return new VoidReply();
         }
 
-        public override Task<VoidReply> PreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)
+        
+        public override async Task<VoidReply> PreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)
         {
-            Logger.LogDebug($"Received pre lib announce {request.BlockHash} from {context.GetPeerInfo()}.");
-
+            await ProcessPreLibAnnounce(request, context);
+            return new VoidReply();
+        }
+        
+        public Task ProcessPreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)
+        {
             if (request?.BlockHash == null)
             {
                 Logger.LogError($"Received null pre lib announcement or header from {context.GetPeerInfo()}.");
-                return Task.FromResult(new VoidReply());
+                return Task.CompletedTask;
             }
+            
+            Logger.LogDebug($"Received pre lib announce {request.BlockHash} from {context.GetPeerInfo()}.");
 
             var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
             peerInPool?.HandlerRemotePreLibAnnounce(request);
 
-            //Logger.LogTrace("Publish event for pre lib announcement received..");
             _ = EventBus.PublishAsync(new PreLibAnnouncementReceivedEventData(request, context.GetPublicKey()));
-
-            //Logger.LogTrace("Finish event for pre lib announcement publish.");
             
-            return Task.FromResult(new VoidReply());
+            return Task.CompletedTask;
+        }
+        
+        public override async Task<VoidReply> PreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
+        {
+            await ProcessPreLibConfirmAnnounce(request, context);
+            return new VoidReply();
         }
 
-        public override Task<VoidReply> PreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
+        public Task ProcessPreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
         {
-            Logger.LogDebug($"Received pre lib confirm {request.BlockHash} from {context.GetPeerInfo()}.");
-
             if (request?.BlockHash == null)
             {
                 Logger.LogError($"Received null pre lib confirm or header from {context.GetPeerInfo()}.");
-                return Task.FromResult(new VoidReply());
+                return Task.CompletedTask;
             }
+            
+            Logger.LogDebug($"Received pre lib confirm {request.BlockHash} from {context.GetPeerInfo()}.");
             
             var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
             peerInPool?.HandlerRemotePreLibAnnounce(new PeerPreLibAnnouncement
@@ -280,12 +304,7 @@ namespace AElf.OS.Network.Grpc
                 BlockHeight = request.BlockHeight,
                 PreLibCount = request.PreLibCount
             });
-            
-            //Logger.LogTrace("Publish event for pre lib confirm announcement received..");
-            //_ = EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
-            //Logger.LogTrace("Finish event for pre lib confirm announcement publish.");
-            
-            return Task.FromResult(new VoidReply());
+            return Task.CompletedTask;
         }
 
         /// <summary>

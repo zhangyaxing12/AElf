@@ -72,11 +72,16 @@ namespace AElf.OS.Network.Grpc
         public bool CanStreamTransactions { get; private set; } = true;
         public bool CanStreamAnnounces { get; private set; } = true;
         
+        public bool CanStreamPreLibAnnounces { get; private set; } = true;
+        public bool CanStreamPreLibConfirmAnnounces { get; private set; } = true;
+        
         public IReadOnlyDictionary<string, ConcurrentQueue<RequestMetric>> RecentRequestsRoundtripTimes { get; }
         private readonly ConcurrentDictionary<string, ConcurrentQueue<RequestMetric>> _recentRequestsRoundtripTimes;
         
         private AsyncClientStreamingCall<Transaction, VoidReply> _transactionStreamCall;
         private AsyncClientStreamingCall<PeerNewBlockAnnouncement, VoidReply> _announcementStreamCall;
+        private AsyncClientStreamingCall<PeerPreLibAnnouncement, VoidReply> _preLibAnnounceStreamCall;
+        private AsyncClientStreamingCall<PeerPreLibConfirmAnnouncement, VoidReply> _preLibConfirmAnnounceStreamCall;
 
         public GrpcPeer(Channel channel, PeerService.PeerServiceClient client, GrpcPeerInfo peerInfo)
         {
@@ -183,6 +188,18 @@ namespace AElf.OS.Network.Grpc
             CanStreamAnnounces = true;
         }
         
+        public void StartPreLibAnnouncementStreaming()
+        {
+            _preLibAnnounceStreamCall = _client.PreLibAnnounceStream();
+            CanStreamPreLibAnnounces = true;
+        }
+        
+        public void StartPreLibConfirmAnnouncementStreaming()
+        {
+            _preLibConfirmAnnounceStreamCall = _client.PreLibConfirmAnnounceStream();
+            CanStreamPreLibConfirmAnnounces = true;
+        }
+        
         public async Task AnnounceAsync(PeerNewBlockAnnouncement header)
         {
             if (!CanStreamAnnounces)
@@ -215,32 +232,56 @@ namespace AElf.OS.Network.Grpc
             CanStreamTransactions = true;
         }
         
-        public Task PreLibAnnounceAsync(PeerPreLibAnnouncement peerPreLibAnnouncement)
+        public async Task PreLibAnnounceAsync(PeerPreLibAnnouncement peerPreLibAnnouncement)
         {
-            var request = new GrpcRequest
+            if (!CanStreamPreLibAnnounces)
             {
-                ErrorMessage = $"Broadcast pre lib for {peerPreLibAnnouncement.BlockHash} failed.",
-                MetricName = nameof(MetricNames.PreLibAnnounce),
-                MetricInfo = $"Block hash {peerPreLibAnnouncement.BlockHash}"
-            };
+                // if we cannot stream we use the unary version of the send.
+                await UnaryPreLibAnnounceAsync(peerPreLibAnnouncement);
+                Logger.LogDebug("Not streaming pre lib announce.");
+                return;
+            }
 
-            var data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
-
-            return RequestAsync(_client, c => c.PreLibAnnounceAsync(peerPreLibAnnouncement, data), request);
+            try
+            {
+                await _preLibAnnounceStreamCall.RequestStream.WriteAsync(peerPreLibAnnouncement);
+            }
+            catch (RpcException e)
+            {
+                if (!CanStreamPreLibAnnounces) // Already down
+                    return;
+                
+                CanStreamPreLibAnnounces = false;
+                _preLibAnnounceStreamCall.Dispose();
+                
+                throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.PreLibAnnounceStream);
+            }
         }
 
-        public Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement)
-        {
-            var request = new GrpcRequest
+        public async Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement)
+        { 
+            if (!CanStreamPreLibConfirmAnnounces)
             {
-                ErrorMessage = $"Broadcast pre lib confirm for {peerPreLibConfirmAnnouncement.BlockHash} failed.",
-                MetricName = nameof(MetricNames.GetBlock),
-                MetricInfo = $"Block hash {peerPreLibConfirmAnnouncement.BlockHash}"
-            };
-
-            var data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
-
-            return RequestAsync(_client, c => c.PreLibConfirmAnnounceAsync(peerPreLibConfirmAnnouncement, data), request);
+                // if we cannot stream we use the unary version of the send.
+                await UnaryPreLibConfirmAnnounceAsync(peerPreLibConfirmAnnouncement);
+                Logger.LogDebug("Not streaming pre lib confirm announce.");
+                return;
+            }
+            
+            try
+            {
+                await _preLibConfirmAnnounceStreamCall.RequestStream.WriteAsync(peerPreLibConfirmAnnouncement);
+            }
+            catch (RpcException e)
+            {
+                if (!CanStreamPreLibConfirmAnnounces) // Already down
+                    return;
+                
+                CanStreamPreLibConfirmAnnounces = false;
+                _preLibConfirmAnnounceStreamCall.Dispose();
+                
+                throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.PreLibConfirmAnnounceStream);
+            }
         }
 
         public async Task SendTransactionAsync(Transaction tx)
@@ -291,6 +332,34 @@ namespace AElf.OS.Network.Grpc
             Metadata data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
 
             return RequestAsync(_client, c => c.AnnounceAsync(header, data), request);
+        }
+        
+        public Task UnaryPreLibAnnounceAsync(PeerPreLibAnnouncement preLibAnnouncement)
+        {
+            GrpcRequest request = new GrpcRequest
+            {
+                ErrorMessage = $"Broadcast pre lib announce for {preLibAnnouncement.BlockHash} failed.",
+                MetricName = nameof(MetricNames.PreLibAnnounce),
+                MetricInfo = $"Block hash {preLibAnnouncement.BlockHash}"
+            };
+
+            Metadata data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
+
+            return RequestAsync(_client, c => c.PreLibAnnounceAsync(preLibAnnouncement, data), request);
+        }
+        
+        public Task UnaryPreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement preLibConfirmAnnouncement)
+        {
+            GrpcRequest request = new GrpcRequest
+            {
+                ErrorMessage = $"Broadcast pre lib confirm announce for {preLibConfirmAnnouncement.BlockHash} failed.",
+                MetricName = nameof(MetricNames.PreLibConfirm),
+                MetricInfo = $"Block hash {preLibConfirmAnnouncement.BlockHash}"
+            };
+
+            Metadata data = new Metadata { {GrpcConstants.TimeoutMetadataKey, AnnouncementTimeout.ToString()} };
+
+            return RequestAsync(_client, c => c.PreLibConfirmAnnounceAsync(preLibConfirmAnnouncement, data), request);
         }
 
         private async Task<TResp> RequestAsync<TResp>(PeerService.PeerServiceClient client,

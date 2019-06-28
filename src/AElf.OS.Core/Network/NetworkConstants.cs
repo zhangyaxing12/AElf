@@ -13,5 +13,7 @@ namespace AElf.OS.Network
         public const string PeerReconnectionQueueName = "PeerReconnectionQueue";
         public const string AnnouncementBroadcastQueueName = "AnnouncementBroadcastQueue";
         public const string TransactionBroadcastQueueName = "TransactionBroadcastQueue";
+        public const string PreLibAnnouncementBroadcastQueueName = "PreLibAnnouncementBroadcastQueue";
+        public const string PreLibConfirmAnnouncementBroadcastQueueName = "PreLibConfirmAnnouncementBroadcastQueue";
     }
 }
