@@ -23,6 +23,12 @@ namespace AElf.OS.Network.Infrastructure
         
         IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
 
+        bool CanBroadcastTransactions { get; }
+        bool CanBroadcastAnnounces { get; }
+
+        void StartTransactionStreaming();
+        void StartAnnouncementStreaming();
+
         Dictionary<string, List<RequestMetric>> GetRequestMetrics();
 
         void HandlerRemoteAnnounce(PeerNewBlockAnnouncement peerNewBlockAnnouncement);

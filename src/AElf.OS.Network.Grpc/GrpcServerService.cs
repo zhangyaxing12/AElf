@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.Cryptography;
@@ -12,6 +13,7 @@ using AElf.Types;
 using Google.Protobuf;
 using Grpc.Core;
 using Grpc.Core.Interceptors;
+using Grpc.Core.Utils;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -95,7 +97,10 @@ namespace AElf.OS.Network.Grpc
             var hsk = await _peerPool.GetHandshakeAsync();
             
             // If auth ok -> add it to our peers
-            _peerPool.AddPeer(grpcPeer);
+            if (_peerPool.AddPeer(grpcPeer))
+                Logger.LogDebug($"Added to pool {grpcPeer.PubKey}.");
+
+            // todo handle case where add is false (edge case)
 
             return new ConnectReply { Handshake = hsk };
         }
@@ -168,32 +173,17 @@ namespace AElf.OS.Network.Grpc
             return AuthError.None;
         }
 
-        /// <summary>
-        /// This method is called when another peer broadcasts a transaction.
-        /// </summary>
-        public override async Task<VoidReply> SendTransaction(Transaction tx, ServerCallContext context)
+        public override async Task<VoidReply> AnnouncementBroadcastStream(IAsyncStreamReader<PeerNewBlockAnnouncement> requestStream, ServerCallContext context)
         {
-            var chain = await _blockchainService.GetChainAsync();
-            
-            // if this transaction's ref block is a lot higher than our chain 
-            // then don't participate in p2p network
-            if (tx.RefBlockNumber > chain.LongestChainHeight + NetworkConstants.DefaultMinBlockGapBeforeSync)
-                return new VoidReply();
-            
-            _ = EventBus.PublishAsync(new TransactionsReceivedEvent { Transactions = new List<Transaction> {tx} });
-
+            await requestStream.ForEachAsync(async r => await ProcessAnnouncement(r, context));
             return new VoidReply();
         }
 
-        /// <summary>
-        /// This method is called when a peer wants to broadcast an announcement.
-        /// </summary>
-        public override Task<VoidReply> Announce(PeerNewBlockAnnouncement an, ServerCallContext context)
+        public Task ProcessAnnouncement(PeerNewBlockAnnouncement an, ServerCallContext context)
         {
             if (an?.BlockHash == null)
             {
                 Logger.LogError($"Received null announcement or header from {context.GetPeerInfo()}.");
-                return Task.FromResult(new VoidReply());
             }
             
             Logger.LogDebug($"Received announce {an.BlockHash} from {context.GetPeerInfo()}.");
@@ -203,7 +193,42 @@ namespace AElf.OS.Network.Grpc
 
             _ = EventBus.PublishAsync(new AnnouncementReceivedEventData(an, context.GetPublicKey()));
             
-            return Task.FromResult(new VoidReply());
+            return Task.CompletedTask;
+        }
+        
+        public override async Task<VoidReply> TransactionBroadcastStream(IAsyncStreamReader<Transaction> requestStream, ServerCallContext context)
+        {
+            await requestStream.ForEachAsync(async tx => await ProcessTransaction(tx, context));
+            return new VoidReply();
+        }
+
+        /// <summary>
+        /// This method is called when another peer broadcasts a transaction.
+        /// </summary>
+        public async Task SendTransaction(Transaction tx, ServerCallContext context)
+        {
+            await ProcessTransaction(tx, context);
+        }
+
+        private async Task ProcessTransaction(Transaction tx, ServerCallContext context)
+        {
+            var chain = await _blockchainService.GetChainAsync();
+            
+            // if this transaction's ref block is a lot higher than our chain 
+            // then don't participate in p2p network
+            if (tx.RefBlockNumber > chain.LongestChainHeight + NetworkConstants.DefaultMinBlockGapBeforeSync)
+                return;
+
+            _ = EventBus.PublishAsync(new TransactionsReceivedEvent { Transactions = new List<Transaction> {tx} });
+        }
+
+        /// <summary>
+        /// This method is called when a peer wants to broadcast an announcement.
+        /// </summary>
+        public override async Task<VoidReply> Announce(PeerNewBlockAnnouncement an, ServerCallContext context)
+        {
+            await ProcessAnnouncement(an, context);
+            return new VoidReply();
         }
 
         public override Task<VoidReply> PreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)

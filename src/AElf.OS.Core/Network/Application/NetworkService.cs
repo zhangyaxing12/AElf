@@ -46,43 +46,41 @@ namespace AElf.OS.Network.Application
             return _peerPool.GetPeers(true).ToList(); 
         }
 
-        public async Task<int> BroadcastAnnounceAsync(BlockHeader blockHeader,bool hasFork)
+        public async Task BroadcastAnnounceAsync(BlockHeader blockHeader, bool hasFork)
         {
-            int successfulBcasts = 0;
-            
             var blockHash = blockHeader.GetHash();
             if (_peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeader.Height, out var recentBlock) &&
                 recentBlock.BlockHash == blockHash)
             {
                 Logger.LogDebug($"BlockHeight: {blockHeader.Height}, BlockHash: {blockHash} has been broadcast.");
-                return successfulBcasts;
+                return;
             }
-
+            
+            _peerPool.AddRecentBlockHeightAndHash(blockHeader.Height, blockHash, hasFork);
+            
             var announce = new PeerNewBlockAnnouncement
             {
                 BlockHash = blockHash,
                 BlockHeight = blockHeader.Height,
                 HasFork = hasFork
             };
-            
-            var peers = _peerPool.GetPeers().ToList();
 
-            _peerPool.AddRecentBlockHeightAndHash(blockHeader.Height, blockHash, hasFork);
-            
-            Logger.LogDebug("About to broadcast to peers.");
-            
-            var tasks = peers.Select(peer => DoAnnounce(peer, announce)).ToList();
-            await Task.WhenAll(tasks);
-
-            foreach (var finishedTask in tasks.Where(t => t.IsCompleted))
+            foreach (var peer in _peerPool.GetPeers().Where(p => p.CanBroadcastAnnounces))
             {
-                if (finishedTask.Result)
-                    successfulBcasts++;
+                try
+                {
+                    await peer.AnnounceAsync(announce);
+                }
+                catch (NetworkException ex)
+                {
+                    Logger.LogError(ex, $"Error while announcing to {peer}.");
+                    await HandleNetworkException(peer, ex);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogError(e, $"Error while announcing to {peer}.");
+                }
             }
-            
-            Logger.LogDebug("Broadcast successful !");
-            
-            return successfulBcasts;
         }
 
         public async Task<int> BroadcastPreLibAnnounceAsync(long blockHeight, Hash blockHash,int preLibCount)
@@ -150,25 +148,6 @@ namespace AElf.OS.Network.Application
 
             return successfulBcasts;
         }
-
-        private async Task<bool> DoAnnounce(IPeer peer, PeerNewBlockAnnouncement announce)
-        {
-            try
-            {
-                Logger.LogDebug($"Before broadcast {announce.BlockHash} to {peer}.");
-                await peer.AnnounceAsync(announce);
-                //Logger.LogDebug($"After broadcast {announce.BlockHash} to {peer}.");
-
-                return true;
-            }
-            catch (NetworkException ex)
-            {
-                Logger.LogError(ex, "Error while announcing.");
-                await HandleNetworkException(peer, ex);
-            }
-
-            return false;
-        }
         
         private async Task<bool> DoPreLibAnnounce(IPeer peer, PeerPreLibAnnouncement announce)
         {
@@ -208,26 +187,24 @@ namespace AElf.OS.Network.Application
             return false;
         }
         
-        public async Task<int> BroadcastTransactionAsync(Transaction tx)
+        public async Task BroadcastTransactionAsync(Transaction tx)
         {
-            int successfulBcasts = 0;
-            
-            foreach (var peer in _peerPool.GetPeers())
+            foreach (var peer in _peerPool.GetPeers().Where(p => p.CanBroadcastTransactions))
             {
                 try
                 {
                     await peer.SendTransactionAsync(tx);
-                    
-                    successfulBcasts++;
                 }
                 catch (NetworkException ex)
                 {
                     //Logger.LogError(ex, "Error while sending transaction.");
                     await HandleNetworkException(peer, ex);
                 }
+                catch (Exception e)
+                {
+                    Logger.LogError(e, $"Error while sending transaction {peer}.");
+                }
             }
-            
-            return successfulBcasts;
         }
 
         public async Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousBlock, int count, 
@@ -316,24 +293,61 @@ namespace AElf.OS.Network.Application
             }
             else if (exception.ExceptionType == NetworkExceptionType.PeerUnstable)
             {
-                Logger.LogError(exception, $"Queuing for reconnection {peer.PeerIpAddress}.");
-                QueueConnectionWait(peer);
+                Logger.LogError($"Queuing peer for reconnection {peer.PeerIpAddress}.");
+                
+                QueueNetworkTask(async () => {
+                    if (peer.IsReady) // peer recovered already
+                        return;
+                
+                    var success = await peer.TryWaitForStateChangedAsync();
+
+                    if (!success)
+                        await _peerPool.RemovePeerAsync(peer.PubKey, false);
+                });
+            }
+            else if (exception.ExceptionType == NetworkExceptionType.AnnounceStream)
+            {
+                Logger.LogDebug($"Queuing peer for announcement stream recreation {peer.PeerIpAddress}.");
+                
+                QueueNetworkTask(() =>
+                {
+                    if (!peer.CanBroadcastAnnounces)
+                    {
+                        peer.StartAnnouncementStreaming();
+                        Logger.LogDebug($"Started announcement stream {peer.PeerIpAddress}.");
+                    }
+                    else
+                    {
+                        Logger.LogDebug($"Already started announcement stream {peer.PeerIpAddress}.");
+                    }
+                    
+                    return Task.CompletedTask;
+                });
+            }
+            else if (exception.ExceptionType == NetworkExceptionType.TransactionStream)
+            {
+                Logger.LogDebug($"Queuing peer for transaction stream recreation {peer.PeerIpAddress}.");
+
+                QueueNetworkTask(() =>
+                {
+                    if (!peer.CanBroadcastTransactions)
+                    {
+                        peer.StartTransactionStreaming();
+                        Logger.LogDebug($"Started transaction stream {peer.PeerIpAddress}.");
+                    }
+                    else
+                    {
+                        Logger.LogDebug($"Already started transaction stream {peer.PeerIpAddress}.");
+                    }
+                    
+                    return Task.CompletedTask;
+                });
             }
         }
 
-        private void QueueConnectionWait(IPeer peer)
+        private void QueueNetworkTask(Func<Task> task)
         {
-            _taskQueueManager.Enqueue(async () =>
-            {
-                if (peer.IsReady) // peer recovered already
-                    return;
-                
-                var success = await peer.TryWaitForStateChangedAsync();
-
-                if (!success)
-                    await _peerPool.RemovePeerAsync(peer.PubKey, false);
-                
-            }, NetworkConstants.PeerReconnectionQueueName);
+            _taskQueueManager.Enqueue(task, NetworkConstants.PeerReconnectionQueueName);
         }
 
         private async Task<T> RequestAsync<T>(List<IPeer> peers, Func<IPeer, Task<T>> func,
