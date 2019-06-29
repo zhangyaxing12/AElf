@@ -223,6 +223,10 @@ namespace AElf.OS.Network.Grpc
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.AnnounceStream);
             }
+            catch (Exception e)
+            {
+                throw new NetworkException($"Failed stream to {this}: ", e);
+            }
         }
 
         public void StartTransactionStreaming()
@@ -255,6 +259,10 @@ namespace AElf.OS.Network.Grpc
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.PreLibAnnounceStream);
             }
+            catch (Exception e)
+            {
+                throw new NetworkException($"Failed stream to {this}: ", e);
+            }
         }
 
         public async Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement)
@@ -281,6 +289,10 @@ namespace AElf.OS.Network.Grpc
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.PreLibConfirmAnnounceStream);
             }
+            catch (Exception e)
+            {
+                throw new NetworkException($"Failed stream to {this}: ", e);
+            }
         }
 
         public async Task SendTransactionAsync(Transaction tx)
@@ -305,6 +317,10 @@ namespace AElf.OS.Network.Grpc
                 _transactionStreamCall.Dispose();
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.TransactionStream);
+            }
+            catch (Exception e)
+            {
+                throw new NetworkException($"Failed stream to {this}: ", e);
             }
         }
 
