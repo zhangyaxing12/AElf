@@ -243,6 +243,10 @@ namespace AElf.OS.Network.Grpc
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.BlockRequestStream);
             }
+            catch (Exception e)
+            {
+                throw new NetworkException($"Failed stream to {this}: ", e);
+            }
             
             return null;
         }
@@ -250,7 +254,7 @@ namespace AElf.OS.Network.Grpc
         public void StartAnnouncementStreaming()
         {
             _announcementStreamCall = _client.AnnouncementBroadcastStream();
-            CanStreamAnnouncements = true;
+            CanStreamAnnounces = true;
         }
         
         public void StartPreLibAnnouncementStreaming()
@@ -267,7 +271,7 @@ namespace AElf.OS.Network.Grpc
         
         public async Task AnnounceAsync(PeerNewBlockAnnouncement header)
         {
-            if (!CanStreamAnnouncements)
+            if (!CanStreamAnnounces)
             {
                 // if we cannot stream we use the unary version of the send.
                 await UnaryAnnounceAsync(header);
@@ -280,10 +284,10 @@ namespace AElf.OS.Network.Grpc
             }
             catch (RpcException e)
             {
-                if (!CanStreamAnnouncements) // Already down
+                if (!CanStreamAnnounces) // Already down
                     return;
                 
-                CanStreamAnnouncements = false;
+                CanStreamAnnounces = false;
                 _announcementStreamCall.Dispose();
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.AnnounceStream);
@@ -306,7 +310,6 @@ namespace AElf.OS.Network.Grpc
             {
                 // if we cannot stream we use the unary version of the send.
                 await UnaryPreLibAnnounceAsync(peerPreLibAnnouncement);
-                Logger.LogDebug("Not streaming pre lib announce.");
                 return;
             }
 
@@ -336,7 +339,6 @@ namespace AElf.OS.Network.Grpc
             {
                 // if we cannot stream we use the unary version of the send.
                 await UnaryPreLibConfirmAnnounceAsync(peerPreLibConfirmAnnouncement);
-                Logger.LogDebug("Not streaming pre lib confirm announce.");
                 return;
             }
             

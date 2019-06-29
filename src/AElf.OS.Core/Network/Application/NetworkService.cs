@@ -323,7 +323,7 @@ namespace AElf.OS.Network.Application
                 return Task.CompletedTask;
             }
 
-            if (!peer.CanStreamAnnouncements)
+            if (!peer.CanStreamAnnounces)
             {
                 peer.StartAnnouncementStreaming();
                 Logger.LogDebug($"Started announcement stream {peer.PeerIpAddress}.");
