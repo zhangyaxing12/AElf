@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
 using AElf.Kernel.Blockchain.Events;
+using AElf.OS.BlockSync.Application;
+using AElf.OS.BlockSync.Infrastructure;
 using AElf.OS.Network.Application;
 using AElf.OS.Network.Events;
 using Volo.Abp.DependencyInjection;
@@ -12,18 +14,40 @@ namespace AElf.OS.Handlers
     {
         public class BlockAcceptedEventHandler : ILocalEventHandler<BlockAcceptedEvent>, ITransientDependency
         {
-            public INetworkService NetworkService { get; set; }
-            public ILocalEventBus EventBus { get; set; }
+            private readonly INetworkService _networkService;
+            private readonly ISyncStateService _syncStateService;
+            private readonly ITaskQueueManager _taskQueueManager;
             
-            public BlockAcceptedEventHandler()
+            public ILocalEventBus EventBus { get; set; }
+
+            public BlockAcceptedEventHandler(INetworkService networkService, ISyncStateService syncStateService, 
+                ITaskQueueManager taskQueueManager)
             {
-                EventBus = NullLocalEventBus.Instance;
+                _taskQueueManager = taskQueueManager;
+                _networkService = networkService;
+                _syncStateService = syncStateService;
+            
+            EventBus = NullLocalEventBus.Instance;
             }
 
             public Task HandleEventAsync(BlockAcceptedEvent eventData)
             {
-                NetworkService.BroadcastAnnounce(eventData.BlockHeader, eventData.HasFork);
-                EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
+                if (_syncStateService.SyncState == SyncState.Finished)
+                {
+                    // if sync is finished we announce the block
+                    _networkService.BroadcastAnnounce(eventData.BlockHeader, eventData.HasFork);
+                    EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
+                }
+                else if (_syncStateService.SyncState == SyncState.Syncing)
+                {
+                    // if syncing and the block is higher the current target, try and update.
+                    if (_syncStateService.GetCurrentSyncTarget() <= eventData.BlockHeader.Height)
+                    {
+                        _taskQueueManager.Enqueue(async () => {
+                            await _syncStateService.UpdateSyncStateAsync();
+                        }, OSConsts.InitialSyncQueueName);
+                    }
+                }
                 return Task.CompletedTask;
             }
         }

@@ -11,6 +11,7 @@ namespace AElf.OS.Network.Infrastructure
         bool IsReady { get; }
         Hash CurrentBlockHash { get; }
         long CurrentBlockHeight { get; }
+        long LastKnowLibHeight { get; }
         
         string PeerIpAddress { get; }
         string PubKey { get; }
@@ -32,6 +33,7 @@ namespace AElf.OS.Network.Infrastructure
         void StartAnnouncementStreaming();
         void StartPreLibAnnouncementStreaming();
         void StartPreLibConfirmAnnouncementStreaming();
+        void StartBlockRequestStreaming();
 
         Dictionary<string, List<RequestMetric>> GetRequestMetrics();
 
@@ -45,8 +47,10 @@ namespace AElf.OS.Network.Infrastructure
 
         Task<bool> TryWaitForStateChangedAsync();
 
+        Task UpdateHandshakeAsync();
         Task FinalizeConnectAsync();
         Task SendDisconnectAsync();
+        
         Task StopAsync();
 
         Task AnnounceAsync(PeerNewBlockAnnouncement an);

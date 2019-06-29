@@ -6,15 +6,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using AElf.Kernel;
-using AElf.Kernel.SmartContractExecution.Application;
 using AElf.OS.Network.Application;
 using AElf.OS.Network.Infrastructure;
 using AElf.OS.Network.Types;
 using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
-using Microsoft.Extensions.Logging;
-using Volo.Abp.EventBus.Local;
 
 namespace AElf.OS.Network.Grpc
 {
@@ -28,6 +25,7 @@ namespace AElf.OS.Network.Grpc
         private const int BlocksRequestTimeout = 500;
 
         private const int FinalizeConnectTimeout = 400;
+        private const int UpdateHandshakeTimeout = 400;
         
         private enum MetricNames
         {
@@ -41,8 +39,6 @@ namespace AElf.OS.Network.Grpc
         private readonly Channel _channel;
         private readonly PeerService.PeerServiceClient _client;
         
-        public ILogger<GrpcPeer> Logger { get; set; }
-
         /// <summary>
         /// Property that describes a valid state. Valid here means that the peer is ready to be used for communication.
         /// </summary>
@@ -50,6 +46,8 @@ namespace AElf.OS.Network.Grpc
         {
             get { return _channel.State == ChannelState.Idle || _channel.State == ChannelState.Ready; }
         }
+        
+        public long LastKnowLibHeight { get; private set; }
 
         public bool IsBest { get; set; }
         public Hash CurrentBlockHash { get; private set; }
@@ -75,13 +73,16 @@ namespace AElf.OS.Network.Grpc
         public bool CanStreamPreLibAnnounces { get; private set; } = false;
         public bool CanStreamPreLibConfirmAnnounces { get; private set; } = false;
         
+        public bool CanStreamBlocks { get; private set; }
+        
         public IReadOnlyDictionary<string, ConcurrentQueue<RequestMetric>> RecentRequestsRoundtripTimes { get; }
         private readonly ConcurrentDictionary<string, ConcurrentQueue<RequestMetric>> _recentRequestsRoundtripTimes;
         
         private AsyncClientStreamingCall<Transaction, VoidReply> _transactionStreamCall;
         private AsyncClientStreamingCall<PeerNewBlockAnnouncement, VoidReply> _announcementStreamCall;
         private AsyncClientStreamingCall<PeerPreLibAnnouncement, VoidReply> _preLibAnnounceStreamCall;
-        private AsyncClientStreamingCall<PeerPreLibConfirmAnnouncement, VoidReply> _preLibConfirmAnnounceStreamCall;
+        private AsyncClientStreamingCall<PeerPreLibConfirmAnnouncement, VoidReply> _preLibConfirmAnnounceStreamCall; 
+        private AsyncDuplexStreamingCall<BlockRequest, BlockReply> _blockRequestBlockStream;
 
         public GrpcPeer(Channel channel, PeerService.PeerServiceClient client, GrpcPeerInfo peerInfo)
         {
@@ -94,6 +95,7 @@ namespace AElf.OS.Network.Grpc
             ConnectionTime = peerInfo.ConnectionTime;
             Inbound = peerInfo.IsInbound;
             StartHeight = peerInfo.StartHeight;
+            LastKnowLibHeight = peerInfo.LibHeightAtHandshake;
 
             _recentBlockHeightAndHashMappings = new ConcurrentDictionary<long, AcceptedBlockInfo>();
             RecentBlockHeightAndHashMappings = new ReadOnlyDictionary<long, AcceptedBlockInfo>(_recentBlockHeightAndHashMappings);
@@ -131,6 +133,24 @@ namespace AElf.OS.Network.Grpc
 
             return metrics;
         }
+        
+        public async Task UpdateHandshakeAsync()
+        {
+            GrpcRequest request = new GrpcRequest
+            {
+                ErrorMessage = $"Error while updating handshake."
+            };
+            
+            Metadata data = new Metadata
+            {
+                {GrpcConstants.TimeoutMetadataKey, UpdateHandshakeTimeout.ToString()}
+            };
+            
+            var handshake = await RequestAsync(_client, c => c.UpdateHandshakeAsync(new UpdateHandshakeRequest(), data), request);
+             
+            if (handshake != null)
+                LastKnowLibHeight = handshake.LibBlockHeight;
+        }
 
         public async Task FinalizeConnectAsync()
         {
@@ -140,7 +160,7 @@ namespace AElf.OS.Network.Grpc
             await RequestAsync(_client, c => c.FinalizeConnectAsync(new Handshake(), data), request);
         }
 
-        public async Task<BlockWithTransactions> RequestBlockAsync(Hash hash)
+        private async Task<BlockWithTransactions> RequestBlockUnaryAsync(Hash hash)
         {
             var blockRequest = new BlockRequest {Hash = hash};
 
@@ -181,11 +201,56 @@ namespace AElf.OS.Network.Grpc
         }
 
         #region Streaming
+        
+        public void StartBlockRequestStreaming()
+        { 
+            _blockRequestBlockStream = _client.RequestBlockStream();
+            CanStreamBlocks = true;
+        }
+        
+        public async Task<BlockWithTransactions> RequestBlockAsync(Hash blockHash)
+        {
+            if (!CanStreamBlocks)
+            {
+                return await RequestBlockUnaryAsync(blockHash);
+            }
+            
+            try
+            {
+                Stopwatch s = Stopwatch.StartNew();
+                
+                await _blockRequestBlockStream.RequestStream.WriteAsync(new BlockRequest { Hash = blockHash }).ConfigureAwait(false);
+                bool received = await _blockRequestBlockStream.ResponseStream.MoveNext().ConfigureAwait(false);
+                
+                s.Stop();
+                
+                if (received)
+                {
+                    if (s.ElapsedMilliseconds > BlockRequestTimeout)
+                        throw new NetworkException($"Block request for slow: {s.ElapsedMilliseconds}, hash {blockHash}");
+                    
+                    var block = _blockRequestBlockStream.ResponseStream.Current;
+                    return block.Block;
+                }
+            }
+            catch (RpcException e)
+            {
+                if (!CanStreamBlocks) // Already down
+                    return null;
+                
+                CanStreamBlocks = false;
+                _blockRequestBlockStream.Dispose();
+                
+                throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.BlockRequestStream);
+            }
+            
+            return null;
+        }
 
         public void StartAnnouncementStreaming()
         {
             _announcementStreamCall = _client.AnnouncementBroadcastStream();
-            CanStreamAnnounces = true;
+            CanStreamAnnouncements = true;
         }
         
         public void StartPreLibAnnouncementStreaming()
@@ -202,7 +267,7 @@ namespace AElf.OS.Network.Grpc
         
         public async Task AnnounceAsync(PeerNewBlockAnnouncement header)
         {
-            if (!CanStreamAnnounces)
+            if (!CanStreamAnnouncements)
             {
                 // if we cannot stream we use the unary version of the send.
                 await UnaryAnnounceAsync(header);
@@ -215,10 +280,10 @@ namespace AElf.OS.Network.Grpc
             }
             catch (RpcException e)
             {
-                if (!CanStreamAnnounces) // Already down
+                if (!CanStreamAnnouncements) // Already down
                     return;
                 
-                CanStreamAnnounces = false;
+                CanStreamAnnouncements = false;
                 _announcementStreamCall.Dispose();
                 
                 throw new NetworkException($"Failed stream to {this}: ", e, NetworkExceptionType.AnnounceStream);

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using AElf.Common;
 using AElf.Kernel;
 using AElf.Kernel.Consensus.AEDPoS.Application;
 using AElf.Modularity;
 using AElf.OS.Network.Grpc;
 using AElf.OS.Network.Infrastructure;
+using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -46,6 +46,7 @@ namespace AElf.OS.Consensus.DPos
                     .Returns(peerList[2]);
                 mockService.Setup(m=>m.GetPeers(It.IsAny<bool>()))
                     .Returns(peerList);
+                mockService.Setup(p => p.RecentBlockHeightAndHashMappings).Returns(new Dictionary<long, Hash>());
                 return mockService.Object;
             });
 

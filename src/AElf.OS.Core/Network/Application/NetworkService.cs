@@ -67,7 +67,7 @@ namespace AElf.OS.Network.Application
             
             _taskQueueManager.Enqueue(async () =>
             {
-                foreach (var peer in _peerPool.GetPeers().Where(p => p.CanStreamAnnounces))
+                foreach (var peer in _peerPool.GetPeers())
                 {
                     try
                     {
@@ -151,7 +151,7 @@ namespace AElf.OS.Network.Application
         {
             _taskQueueManager.Enqueue(async () =>
             {
-                foreach (var peer in _peerPool.GetPeers().Where(p => p.CanStreamTransactions))
+                foreach (var peer in _peerPool.GetPeers())
                 {
                     try
                     {
@@ -230,9 +230,7 @@ namespace AElf.OS.Network.Application
         {
             try
             {
-                Logger.LogDebug($"before request send to {peer.PeerIpAddress}.");
                 var res = await func(peer);
-                Logger.LogDebug($"request send to {peer.PeerIpAddress}.");
                 
                 return (peer, res);
             }
@@ -254,41 +252,12 @@ namespace AElf.OS.Network.Application
             else if (exception.ExceptionType == NetworkExceptionType.PeerUnstable)
             {
                 Logger.LogError($"Queuing peer for reconnection {peer.PeerIpAddress}.");
-                
-                QueueNetworkTask(async () => {
-                    if (peer.IsReady) // peer recovered already
-                        return;
-                
-                    var success = await peer.TryWaitForStateChangedAsync();
-
-                    if (!success)
-                        await _peerPool.RemovePeerAsync(peer.PubKey, false);
-                });
+                QueueNetworkTask(async () => await RecoverPeerAsync(peer));
             }
             else if (exception.ExceptionType == NetworkExceptionType.AnnounceStream)
             {
                 Logger.LogDebug($"Queuing peer for announcement stream recreation {peer.PeerIpAddress}.");
-                
-                QueueNetworkTask(() =>
-                {
-                    if (!peer.IsReady)
-                    {
-                        Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
-                        return Task.CompletedTask;
-                    }
-                        
-                    if (!peer.CanStreamAnnounces)
-                    {
-                        peer.StartAnnouncementStreaming();
-                        Logger.LogDebug($"Started announcement stream {peer.PeerIpAddress}.");
-                    }
-                    else
-                    {
-                        Logger.LogDebug($"Already started announcement stream {peer.PeerIpAddress}.");
-                    }
-                    
-                    return Task.CompletedTask;
-                });
+                QueueNetworkTask(() => RestartAnnouncementStreamingAsync(peer));
             }
             else if (exception.ExceptionType == NetworkExceptionType.PreLibAnnounceStream)
             {
@@ -331,30 +300,63 @@ namespace AElf.OS.Network.Application
             else if (exception.ExceptionType == NetworkExceptionType.TransactionStream)
             {
                 Logger.LogDebug($"Queuing peer for transaction stream recreation {peer.PeerIpAddress}.");
-
-                QueueNetworkTask(() =>
-                {
-                    if (!peer.IsReady)
-                    {
-                        Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
-                        return Task.CompletedTask;
-                    }
-                    
-                    if (!peer.CanStreamTransactions)
-                    {
-                        peer.StartTransactionStreaming();
-                        Logger.LogDebug($"Started transaction stream {peer.PeerIpAddress}.");
-                    }
-                    else
-                    {
-                        Logger.LogDebug($"Already started transaction stream {peer.PeerIpAddress}.");
-                    }
-                    
-                    return Task.CompletedTask;
-                });
+                QueueNetworkTask(() => RestartTransactionStreaming(peer));
             }
         }
+        
+        private async Task RecoverPeerAsync(IPeer peer)
+        {
+            if (peer.IsReady) // peer recovered already
+                return;
+                
+            var success = await peer.TryWaitForStateChangedAsync();
 
+            if (!success)
+                await _peerPool.RemovePeerAsync(peer.PubKey, false);
+        }
+
+        private Task RestartAnnouncementStreamingAsync(IPeer peer)
+        {
+            if (!peer.IsReady)
+            {
+                Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
+                return Task.CompletedTask;
+            }
+
+            if (!peer.CanStreamAnnouncements)
+            {
+                peer.StartAnnouncementStreaming();
+                Logger.LogDebug($"Started announcement stream {peer.PeerIpAddress}.");
+            }
+            else
+            {
+                Logger.LogDebug($"Already started announcement stream {peer.PeerIpAddress}.");
+            }
+
+            return Task.CompletedTask;
+        }
+        
+        private Task RestartTransactionStreaming(IPeer peer)
+        {
+            if (!peer.IsReady)
+            {
+                Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
+                return Task.CompletedTask;
+            }
+                    
+            if (!peer.CanStreamTransactions)
+            {
+                peer.StartTransactionStreaming();
+                Logger.LogDebug($"Started transaction stream {peer.PeerIpAddress}.");
+            }
+            else
+            {
+                Logger.LogDebug($"Already started transaction stream {peer.PeerIpAddress}.");
+            }
+
+            return Task.CompletedTask;
+        }
+        
         private void QueueNetworkTask(Func<Task> task)
         {
             _taskQueueManager.Enqueue(task, NetworkConstants.PeerReconnectionQueueName);
@@ -388,7 +390,7 @@ namespace AElf.OS.Network.Application
 
             if (finished == null)
             {
-                Logger.LogDebug($"No peer succeeded.");
+                Logger.LogDebug("No peer succeeded.");
                 return null;
             }
 
