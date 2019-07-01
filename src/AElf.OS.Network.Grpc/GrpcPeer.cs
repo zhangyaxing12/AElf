@@ -22,7 +22,7 @@ namespace AElf.OS.Network.Grpc
         private const int AnnouncementTimeout = 600;
         private const int BlockRequestTimeout = 300;
         private const int TransactionSendTimeout = 300;
-        private const int BlocksRequestTimeout = 500;
+        private const int BlocksRequestTimeout = 1000;
 
         private const int FinalizeConnectTimeout = 400;
         private const int UpdateHandshakeTimeout = 400;
@@ -210,10 +210,10 @@ namespace AElf.OS.Network.Grpc
         
         public async Task<BlockWithTransactions> RequestBlockAsync(Hash blockHash)
         {
-            if (!CanStreamBlocks)
-            {
+//            if (!CanStreamBlocks)
+//            {
                 return await RequestBlockUnaryAsync(blockHash);
-            }
+//            }
             
             try
             {
