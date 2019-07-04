@@ -12,11 +12,13 @@ namespace AElf.OS.Network
     {
         private readonly INetworkService _networkService;
         private readonly IPeerPool _peerPool;
+        private readonly OSTestHelper _osTestHelper;
 
         public NetworkServiceTests()
         {
             _networkService = GetRequiredService<INetworkService>();
             _peerPool = GetRequiredService<IPeerPool>();
+            _osTestHelper = GetRequiredService<OSTestHelper>();
         }
 
         #region GetBlocks
