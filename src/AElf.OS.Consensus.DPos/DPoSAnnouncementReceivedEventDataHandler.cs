@@ -82,7 +82,7 @@ namespace AElf.OS.Consensus.DPos
         {
             var chain = await _blockchainService.GetChainAsync();
             
-            var preLibHeight = chain.BestChainHeight - 30;
+            var preLibHeight = chain.BestChainHeight - 10;
             if (preLibHeight <= chain.LastIrreversibleBlockHeight) return null;
             
             var chainContext = new ChainContext {BlockHash = chain.BestChainHash, BlockHeight = chain.BestChainHeight};
@@ -93,7 +93,7 @@ namespace AElf.OS.Consensus.DPos
             var pubKey = (await _accountService.GetPublicKeyAsync()).ToHex();
             if (peers.Count == 0 && !pubkeyList.Contains(pubKey)) return null;
 
-            var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
+            var sureAmount = pubkeyList.Count;
             var hasBlock = _peerPool.RecentBlockHeightAndHashMappings.TryGetValue(preLibHeight, out var blockInfo) && !blockInfo.HasFork;
             if (!hasBlock) return null;
 

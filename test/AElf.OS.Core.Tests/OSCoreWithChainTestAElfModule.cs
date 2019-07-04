@@ -5,6 +5,7 @@ using AElf.Kernel.Blockchain.Application;
 using AElf.Kernel.Miner.Application;
 using AElf.Modularity;
 using AElf.OS.Network.Infrastructure;
+using AElf.OS.Network.Types;
 using AElf.Types;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
@@ -30,7 +31,7 @@ namespace AElf.OS
                     .Returns<string>((adr) => null);
                 peerPoolMock.Setup(p => p.GetPeers(It.IsAny<bool>()))
                     .Returns(new List<IPeer>());
-                peerPoolMock.Setup(p => p.RecentBlockHeightAndHashMappings).Returns(new Dictionary<long, Hash>());
+                peerPoolMock.Setup(p => p.RecentBlockHeightAndHashMappings).Returns(new Dictionary<long,AcceptedBlockInfo>());
                 
                 return peerPoolMock.Object;
             });

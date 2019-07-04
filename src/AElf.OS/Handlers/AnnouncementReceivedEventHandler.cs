@@ -7,7 +7,6 @@ using AElf.Kernel.Consensus.AEDPoS.Application;
 using AElf.OS.Network.Application;
 using AElf.OS.Network.Events;
 using AElf.OS.Network.Infrastructure;
-using AElf.Sdk.CSharp;
 using Volo.Abp.EventBus;
 
 namespace AElf.OS.Handlers
@@ -53,7 +52,7 @@ namespace AElf.OS.Handlers
             if (pubkeyList.Contains(pubKey))
                 peersHadBlockAmount++;
 
-            var sureAmount = pubkeyList.Count.Mul(2).Div(3) + 1;
+            var sureAmount = pubkeyList.Count;
             if (peersHadBlockAmount < sureAmount) return;
             var peersHadPreLibAmount =
                 peers.Count(p => p.HasBlock(blockHeight, blockHash) && p.HasPreLib(blockHeight, blockHash));

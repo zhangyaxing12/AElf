@@ -22,7 +22,7 @@ namespace AElf.OS.Network.Grpc
         private const int AnnouncementTimeout = 600;
         private const int BlockRequestTimeout = 300;
         private const int TransactionSendTimeout = 300;
-        private const int BlocksRequestTimeout = 1000;
+        private const int BlocksRequestTimeout = 500;
 
         private const int FinalizeConnectTimeout = 400;
         private const int UpdateHandshakeTimeout = 400;
