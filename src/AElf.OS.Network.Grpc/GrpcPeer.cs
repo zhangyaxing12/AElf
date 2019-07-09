@@ -25,6 +25,7 @@ namespace AElf.OS.Network.Grpc
         private const int BlocksRequestTimeout = 500;
 
         private const int FinalizeConnectTimeout = 400;
+        private const int GetNodesTimeout = 500;
         private const int UpdateHandshakeTimeout = 400;
         
         private enum MetricNames
@@ -158,6 +159,21 @@ namespace AElf.OS.Network.Grpc
             Metadata data = new Metadata { {GrpcConstants.TimeoutMetadataKey, FinalizeConnectTimeout.ToString()} };
 
             await RequestAsync(_client, c => c.FinalizeConnectAsync(new Handshake(), data), request);
+        }
+        
+        public Task<NodeList> GetNodesAsync(int count = NetworkConstants.DefaultDiscoveryMaxNodesToRequest)
+        {
+            GrpcRequest request = new GrpcRequest
+            {
+                ErrorMessage = $"Request nodes failed."
+            };
+            
+            Metadata data = new Metadata
+            {
+                {GrpcConstants.TimeoutMetadataKey, GetNodesTimeout.ToString()}
+            };
+            
+            return RequestAsync(_client, c => c.GetNodesAsync(new NodesRequest { MaxCount = count }, data), request);
         }
 
         private async Task<BlockWithTransactions> RequestBlockUnaryAsync(Hash hash)

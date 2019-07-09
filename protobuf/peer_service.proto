@@ -25,6 +25,7 @@ service PeerService {
 
     rpc Connect (Handshake) returns (ConnectReply) {}
     rpc FinalizeConnect (Handshake) returns (VoidReply) {}
+    rpc GetNodes (NodesRequest) returns (NodeList) {}
     rpc UpdateHandshake(UpdateHandshakeRequest) returns (Handshake) {}
 
     rpc Disconnect (DisconnectReason) returns (VoidReply) {}
@@ -81,6 +82,10 @@ message BlockReply {
 // **** No reply *****
 
 message VoidReply {
+}
+
+message NodesRequest {
+    int32 max_count = 1;
 }
 
 

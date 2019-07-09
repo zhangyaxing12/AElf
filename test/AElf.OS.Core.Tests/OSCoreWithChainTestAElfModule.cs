@@ -70,7 +70,7 @@ namespace AElf.OS
         public override void OnApplicationInitialization(ApplicationInitializationContext context)
         {
             _osTestHelper = context.ServiceProvider.GetService<OSTestHelper>();
-            AsyncHelper.RunSync(() => _osTestHelper.MockChain());
+            AsyncHelper.RunSync(() => _osTestHelper.MockChainAsync());
         }
 
         public override void OnApplicationShutdown(ApplicationShutdownContext context)

@@ -35,7 +35,13 @@ namespace AElf.OS.Consensus.DPos
         [Fact(Skip = "Skip temporary")]
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_SureAmountNotEnough()
         {
-            var sendKey = CryptoHelpers.GenerateKeyPair().PublicKey.ToHex();
+            var block = await GenerateNewBlockAndAnnouncementToPeers(1);
+            var an = new PeerNewBlockAnnouncement
+            {
+                BlockHash = block.GetHash(),
+                BlockHeight = block.Height
+            };
+            var sendKey = CryptoHelper.GenerateKeyPair().PublicKey.ToHex();
             var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
 
             await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
@@ -46,8 +52,6 @@ namespace AElf.OS.Consensus.DPos
         {
             var sendKey = CryptoHelpers.GenerateKeyPair().PublicKey.ToHex();
             var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
-
-            await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
         }
 
         private async Task<Block> GenerateNewBlockAndAnnouncementToPeers(int number = 1)
