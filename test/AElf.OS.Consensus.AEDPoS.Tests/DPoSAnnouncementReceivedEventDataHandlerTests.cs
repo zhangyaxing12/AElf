@@ -26,6 +26,7 @@ namespace AElf.OS.Consensus.DPos
         [Fact(Skip = "Skip temporary")]
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_IsNull()
         {
+            var an = new BlockAnnouncement { };
             var sendKey = string.Empty;
             var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
 
@@ -36,7 +37,7 @@ namespace AElf.OS.Consensus.DPos
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_SureAmountNotEnough()
         {
             var block = await GenerateNewBlockAndAnnouncementToPeers(1);
-            var an = new PeerNewBlockAnnouncement
+            var an = new BlockAnnouncement
             {
                 BlockHash = block.GetHash(),
                 BlockHeight = block.Height
@@ -50,8 +51,8 @@ namespace AElf.OS.Consensus.DPos
         [Fact(Skip = "Skip temporary")]
         public async Task HandleAnnounceReceiveEventAsync_IrreversibleBlockIndex_SureAmountEnough()
         {
-            var sendKey = CryptoHelpers.GenerateKeyPair().PublicKey.ToHex();
             var announcementData = new PreLibConfirmAnnouncementReceivedEventData();
+            await _dpoSAnnouncementReceivedEventDataHandler.HandleEventAsync(announcementData);
         }
 
         private async Task<Block> GenerateNewBlockAndAnnouncementToPeers(int number = 1)
@@ -64,7 +65,7 @@ namespace AElf.OS.Consensus.DPos
             for(int i=0; i<number; i++)
             {
                 var grpcPeer = peers[i] as GrpcPeer;
-                grpcPeer.HandlerRemoteAnnounce(new PeerNewBlockAnnouncement
+                grpcPeer.ProcessReceivedAnnouncement(new BlockAnnouncement
                 {
                     BlockHash = block.GetHash(),
                     BlockHeight = block.Height

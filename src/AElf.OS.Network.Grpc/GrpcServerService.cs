@@ -105,7 +105,7 @@ namespace AElf.OS.Network.Grpc
             
             // If auth ok -> add it to our peers
             if (_peerPool.AddPeer(grpcPeer))
-                Logger.LogDebug($"Added to pool {grpcPeer.PubKey}.");
+                Logger.LogDebug($"Added to pool {grpcPeer.Info.Pubkey}.");
 
             // todo handle case where add is false (edge case)
 
@@ -135,10 +135,9 @@ namespace AElf.OS.Network.Grpc
 
             var pubKey = handshake.HandshakeData.Pubkey.ToHex();
             
-            var connectionInfo = new GrpcPeerInfo
+            var connectionInfo = new PeerInfo
             {
-                PublicKey = pubKey,
-                PeerIpAddress = peerAddress,
+                Pubkey = pubKey,
                 ProtocolVersion = handshake.HandshakeData.Version,
                 ConnectionTime = TimestampHelper.GetUtcNow().Seconds,
                 StartHeight = handshake.BestChainBlockHeader.Height,
@@ -146,7 +145,7 @@ namespace AElf.OS.Network.Grpc
                 LibHeightAtHandshake = handshake.LibBlockHeight
             };
             
-            return new GrpcPeer(channel, client, connectionInfo);
+            return new GrpcPeer(channel, client, peerAddress, connectionInfo);
         }
 
         private AuthError ValidateHandshake(Handshake handshake)
@@ -181,50 +180,50 @@ namespace AElf.OS.Network.Grpc
             return AuthError.None;
         }
 
-        public override Task<VoidReply> FinalizeConnect(Handshake request, ServerCallContext context)
+        public override Task<FinalizeConnectReply> FinalizeConnect(Handshake request, ServerCallContext context)
         {
-            var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
+            var peer = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
             
-            peerInPool.StartBlockRequestStreaming();
-            peerInPool.StartAnnouncementStreaming();
-            peerInPool.StartTransactionStreaming();
-            peerInPool.StartPreLibAnnouncementStreaming();
-            peerInPool.StartPreLibConfirmAnnouncementStreaming();
+            if (peer == null)
+                return Task.FromResult(new FinalizeConnectReply { Success = false });
 
-            return Task.FromResult(new VoidReply());
+            peer.IsConnected = true;
+            
+            return Task.FromResult(new FinalizeConnectReply { Success = true });
         }
 
-        public override async Task<VoidReply> AnnouncementBroadcastStream(IAsyncStreamReader<PeerNewBlockAnnouncement> requestStream, ServerCallContext context)
+        public override async Task<VoidReply> AnnouncementBroadcastStream(IAsyncStreamReader<BlockAnnouncement> requestStream, ServerCallContext context)
         {
             await requestStream.ForEachAsync(async r => await ProcessAnnouncement(r, context));
             return new VoidReply();
         }
 
-        public override async Task<VoidReply> PreLibAnnounceStream(IAsyncStreamReader<PeerPreLibAnnouncement> requestStream, ServerCallContext context)
+        public override async Task<VoidReply> PreLibAnnounceStream(IAsyncStreamReader<PreLibAnnouncement> requestStream, ServerCallContext context)
         {
             await requestStream.ForEachAsync(async preLibAnnounce => await ProcessPreLibAnnounce(preLibAnnounce, context));
             return new VoidReply();
         }
 
-        public override async Task<VoidReply> PreLibConfirmAnnounceStream(IAsyncStreamReader<PeerPreLibConfirmAnnouncement> requestStream, ServerCallContext context)
+        public override async Task<VoidReply> PreLibConfirmAnnounceStream(IAsyncStreamReader<PreLibConfirmAnnouncement> requestStream, ServerCallContext context)
         {
             await requestStream.ForEachAsync(async preLibConfirmAnnounce => await ProcessPreLibConfirmAnnounce(preLibConfirmAnnounce, context));
             return new VoidReply();
         }
 
-        public Task ProcessAnnouncement(PeerNewBlockAnnouncement an, ServerCallContext context)
+        public Task ProcessAnnouncement(BlockAnnouncement announcement, ServerCallContext context)
         {
-            if (an?.BlockHash == null)
+            if (announcement?.BlockHash == null)
             {
                 Logger.LogError($"Received null announcement or header from {context.GetPeerInfo()}.");
+                return Task.CompletedTask;
             }
             
-            Logger.LogDebug($"Received announce {an.BlockHash} from {context.GetPeerInfo()}.");
+            Logger.LogDebug($"Received announce {announcement.BlockHash} from {context.GetPeerInfo()}.");
 
-            var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
-            peerInPool?.HandlerRemoteAnnounce(an);
+            var peer = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
+            peer?.ProcessReceivedAnnouncement(announcement);
 
-            _ = EventBus.PublishAsync(new AnnouncementReceivedEventData(an, context.GetPublicKey()));
+            _ = EventBus.PublishAsync(new AnnouncementReceivedEventData(announcement, context.GetPublicKey()));
             
             return Task.CompletedTask;
         }
@@ -259,20 +258,19 @@ namespace AElf.OS.Network.Grpc
         /// <summary>
         /// This method is called when a peer wants to broadcast an announcement.
         /// </summary>
-        public override async Task<VoidReply> Announce(PeerNewBlockAnnouncement an, ServerCallContext context)
+        public override async Task<VoidReply> SendAnnouncement(BlockAnnouncement an, ServerCallContext context)
         {
             await ProcessAnnouncement(an, context);
             return new VoidReply();
         }
-
         
-        public override async Task<VoidReply> PreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)
+        public override async Task<VoidReply> PreLibAnnounce(PreLibAnnouncement request, ServerCallContext context)
         {
             await ProcessPreLibAnnounce(request, context);
             return new VoidReply();
         }
         
-        public Task ProcessPreLibAnnounce(PeerPreLibAnnouncement request, ServerCallContext context)
+        public Task ProcessPreLibAnnounce(PreLibAnnouncement request, ServerCallContext context)
         {
             if (request?.BlockHash == null)
             {
@@ -283,20 +281,20 @@ namespace AElf.OS.Network.Grpc
             Logger.LogDebug($"Received pre lib announce {request.BlockHash} from {context.GetPeerInfo()}.");
 
             var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
-            peerInPool?.HandlerRemotePreLibAnnounce(request);
+            peerInPool?.ProcessReceivedPreLibAnnounce(request);
 
             _ = EventBus.PublishAsync(new PreLibAnnouncementReceivedEventData(request, context.GetPublicKey()));
             
             return Task.CompletedTask;
         }
         
-        public override async Task<VoidReply> PreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
+        public override async Task<VoidReply> PreLibConfirmAnnounce(PreLibConfirmAnnouncement request, ServerCallContext context)
         {
             await ProcessPreLibConfirmAnnounce(request, context);
             return new VoidReply();
         }
 
-        public Task ProcessPreLibConfirmAnnounce(PeerPreLibConfirmAnnouncement request, ServerCallContext context)
+        public Task ProcessPreLibConfirmAnnounce(PreLibConfirmAnnouncement request, ServerCallContext context)
         {
             if (request?.BlockHash == null)
             {
@@ -307,45 +305,13 @@ namespace AElf.OS.Network.Grpc
             Logger.LogDebug($"Received pre lib confirm {request.BlockHash} from {context.GetPeerInfo()}.");
             
             var peerInPool = _peerPool.FindPeerByPublicKey(context.GetPublicKey());
-            peerInPool?.HandlerRemotePreLibAnnounce(new PeerPreLibAnnouncement
+            peerInPool?.ProcessReceivedPreLibAnnounce(new PreLibAnnouncement
             {
                 BlockHash = request.BlockHash,
                 BlockHeight = request.BlockHeight,
                 PreLibCount = request.PreLibCount
             });
             return Task.CompletedTask;
-        }
-
-        public override async Task RequestBlockStream(IAsyncStreamReader<BlockRequest> requestStream, IServerStreamWriter<BlockReply> responseStream, ServerCallContext context)
-        {
-            try
-            {
-                await requestStream.ForEachAsync(async request =>
-                {
-                    var block = await GetBlock(request, context);
-                    await responseStream.WriteAsync(new BlockReply { Block = block });
-                });
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, "Exception while handling block request.");
-            }
-        }
-
-        private async Task<BlockWithTransactions> GetBlock(BlockRequest request, ServerCallContext context)
-        {
-            if (request == null || request.Hash == null) {
-                return null; // will throw exception in client
-            }
-            
-            Logger.LogDebug($"Peer {context.GetPeerInfo()} requested block {request.Hash}.");
-
-            var block = await _blockchainService.GetBlockWithTransactionsByHash(request.Hash);
-            
-            if (block == null)
-                Logger.LogDebug($"Could not find block {request.Hash} for {context.GetPeerInfo()}.");
-
-            return block;
         }
 
         /// <summary>
@@ -357,8 +323,13 @@ namespace AElf.OS.Network.Grpc
         {
             if (request == null || request.Hash == null || _syncStateService.SyncState != SyncState.Finished) 
                 return new BlockReply();
+            
+            Logger.LogDebug($"Peer {context.GetPeerInfo()} requested block {request.Hash}.");
 
-            var block = await GetBlock(request, context); 
+            var block = await _blockchainService.GetBlockWithTransactionsByHash(request.Hash);
+            
+            if (block == null)
+                Logger.LogDebug($"Could not find block {request.Hash} for {context.GetPeerInfo()}.");
 
             return new BlockReply { Block = block };
         }

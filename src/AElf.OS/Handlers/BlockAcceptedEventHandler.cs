@@ -35,7 +35,7 @@ namespace AElf.OS.Handlers
                 if (_syncStateService.SyncState == SyncState.Finished)
                 {
                     // if sync is finished we announce the block
-                    _networkService.BroadcastAnnounce(eventData.BlockHeader, eventData.HasFork);
+                    _networkService.BroadcastAnnounceAsync(eventData.BlockHeader, eventData.HasFork);
                     EventBus.PublishAsync(new PreLibConfirmAnnouncementReceivedEventData());
                 }
                 else if (_syncStateService.SyncState == SyncState.Syncing)

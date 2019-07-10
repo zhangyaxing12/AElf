@@ -11,6 +11,9 @@ namespace AElf.OS.Network
         
         public const int DefaultInitialSyncOffset = 512;
         
+        public const int AnnouncementQueueJobTimeout = 1000;
+        public const int TransactionQueueJobTimeout = 1000;
+        
         public const int DefaultDiscoveryMaxNodesToRequest = 10;
         public const int DefaultDiscoveryPeriodInMilliSeconds = 60_000;
         public const int DefaultDiscoveryPeersToRequestCount = 5;

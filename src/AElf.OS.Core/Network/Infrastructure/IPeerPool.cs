@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.OS.Network.Types;
@@ -35,5 +34,7 @@ namespace AElf.OS.Network.Infrastructure
         bool HasBlock(long blockHeight, Hash blockHash);
 
         bool HasPreLib(long blockHeight, Hash blockHash);
+        
+        Task ClearAllPeersAsync(bool sendDisconnect);
     }
 }

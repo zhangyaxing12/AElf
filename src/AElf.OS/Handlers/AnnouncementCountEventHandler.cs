@@ -11,7 +11,7 @@ using Volo.Abp.EventBus;
 
 namespace AElf.OS.Handlers
 {
-    public class PreLibAnnouncementReceivedEventHandler : ILocalEventHandler<PreLibAnnouncementReceivedEventData>
+    public class AnnouncementCountEventHandler : ILocalEventHandler<AnnouncementReceivedEventData>
     {
         private readonly IPeerPool _peerPool;
         private readonly IAEDPoSInformationProvider _dpoSInformationProvider;
@@ -19,7 +19,7 @@ namespace AElf.OS.Handlers
         private readonly IAccountService _accountService;
         private readonly INetworkService _networkService;
 
-        public PreLibAnnouncementReceivedEventHandler(IPeerPool peerPool,
+        public AnnouncementCountEventHandler(IPeerPool peerPool,
             IAEDPoSInformationProvider dpoSInformationProvider, 
             IBlockchainService blockchainService,
             IAccountService accountService,
@@ -32,11 +32,11 @@ namespace AElf.OS.Handlers
             _networkService = networkService;
         }
 
-        public async Task HandleEventAsync(PreLibAnnouncementReceivedEventData eventData)
+        public async Task HandleEventAsync(AnnouncementReceivedEventData eventData)
         {
             var blockHeight = eventData.Announce.BlockHeight;
             var blockHash = eventData.Announce.BlockHash;
-            if (!_peerPool.HasBlock(blockHeight, blockHash) || !_peerPool.HasPreLib(blockHeight, blockHash)) return;
+            if (!_peerPool.HasBlock(blockHeight,blockHash)) return;
             
             var chain = await _blockchainService.GetChainAsync();
             var chainContext = new ChainContext {BlockHash = chain.BestChainHash, BlockHeight = chain.BestChainHeight};
@@ -47,14 +47,18 @@ namespace AElf.OS.Handlers
             var pubKey = (await _accountService.GetPublicKeyAsync()).ToHex();
             if (peers.Count == 0 && !pubkeyList.Contains(pubKey))
                 return;
+                
+            var peersHadBlockAmount = peers.Count(p => p.HasBlock(blockHeight, blockHash));
+            if (pubkeyList.Contains(pubKey))
+                peersHadBlockAmount++;
 
             var sureAmount = pubkeyList.Count;
-            var peersHadPreLibCount =
+            if (peersHadBlockAmount < sureAmount) return;
+            var peersHadPreLibAmount =
                 peers.Count(p => p.HasBlock(blockHeight, blockHash) && p.HasPreLib(blockHeight, blockHash));
             if (pubkeyList.Contains(pubKey))
-                peersHadPreLibCount++;
-            if (peersHadPreLibCount < sureAmount) return;
-            var _ = _networkService.BroadcastPreLibConfirmAnnounceAsync(blockHeight, blockHash, peersHadPreLibCount);
+                peersHadPreLibAmount++;
+            var _ = _networkService.BroadcastPreLibAnnounceAsync(blockHeight, blockHash, peersHadPreLibAmount);
         }
     }
 }

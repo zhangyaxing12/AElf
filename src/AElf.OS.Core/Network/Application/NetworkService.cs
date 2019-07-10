@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AElf.Kernel;
 using AElf.OS.Network.Infrastructure;
 using AElf.Types;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Volo.Abp.DependencyInjection;
@@ -36,42 +37,46 @@ namespace AElf.OS.Network.Application
             return await _peerPool.RemovePeerByAddressAsync(address);
         }
 
-        public List<string> GetPeerIpList()
-        {
-            return _peerPool.GetPeers(true).Select(p => p.PeerIpAddress).ToList();
-        }
-
         public List<IPeer> GetPeers()
         {
             return _peerPool.GetPeers(true).ToList(); 
         }
 
-        public void BroadcastAnnounce(BlockHeader blockHeader, bool hasFork)
+        public Task BroadcastAnnounceAsync(BlockHeader blockHeader, bool hasFork)
         {
             var blockHash = blockHeader.GetHash();
             if (_peerPool.RecentBlockHeightAndHashMappings.TryGetValue(blockHeader.Height, out var recentBlock) &&
                 recentBlock.BlockHash == blockHash)
             {
                 Logger.LogDebug($"BlockHeight: {blockHeader.Height}, BlockHash: {blockHash} has been broadcast.");
-                return;
+                return Task.CompletedTask;
             }
             
             _peerPool.AddRecentBlockHeightAndHash(blockHeader.Height, blockHash, hasFork);
             
-            var announce = new PeerNewBlockAnnouncement
+            var announce = new BlockAnnouncement
             {
                 BlockHash = blockHash,
                 BlockHeight = blockHeader.Height,
                 HasFork = hasFork
             };
             
+            var beforeEnqueue = TimestampHelper.GetUtcNow();
             _taskQueueManager.Enqueue(async () =>
             {
+                var execTime = TimestampHelper.GetUtcNow();
+                if (execTime > beforeEnqueue +
+                    TimestampHelper.DurationFromMilliseconds(NetworkConstants.AnnouncementQueueJobTimeout))
+                {
+                    Logger.LogWarning($"Announcement too old: {execTime - beforeEnqueue}");
+                    return;
+                }
+                
                 foreach (var peer in _peerPool.GetPeers())
                 {
                     try
                     {
-                        await peer.AnnounceAsync(announce);
+                        await peer.SendAnnouncementAsync(announce);
                     }
                     catch (NetworkException ex)
                     {
@@ -81,6 +86,9 @@ namespace AElf.OS.Network.Application
                 }
                 
             }, NetworkConstants.AnnouncementBroadcastQueueName);
+            
+            
+            return Task.CompletedTask;
         }
 
         public Task BroadcastPreLibAnnounceAsync(long blockHeight, Hash blockHash,int preLibCount)
@@ -89,20 +97,29 @@ namespace AElf.OS.Network.Application
 
             _peerPool.AddPreLibBlockHeightAndHash(blockHeight, blockHash, preLibCount);
             
-            var announce = new PeerPreLibAnnouncement
+            var announce = new PreLibAnnouncement
             {
                 BlockHash = blockHash,
                 BlockHeight = blockHeight,
                 PreLibCount = preLibCount
             };
-
+            
+            var beforeEnqueue = TimestampHelper.GetUtcNow();
             _taskQueueManager.Enqueue(async () =>
             {
-                foreach (var peer in _peerPool.GetPeers().Where(p => p.CanStreamPreLibAnnounces))
+                var execTime = TimestampHelper.GetUtcNow();
+                if (execTime > beforeEnqueue +
+                    TimestampHelper.DurationFromMilliseconds(NetworkConstants.AnnouncementQueueJobTimeout))
+                {
+                    Logger.LogWarning($"Pre lib announcement too old: {execTime - beforeEnqueue}");
+                    return;
+                }
+                
+                foreach (var peer in _peerPool.GetPeers())
                 {
                     try
                     {
-                        await peer.PreLibAnnounceAsync(announce);
+                        await peer.SendPreLibAnnounceAsync(announce);
                     }
                     catch (NetworkException ex)
                     {
@@ -112,6 +129,7 @@ namespace AElf.OS.Network.Application
                 }
                 
             }, NetworkConstants.PreLibAnnouncementBroadcastQueueName);
+
             return Task.CompletedTask;
         }
 
@@ -121,41 +139,59 @@ namespace AElf.OS.Network.Application
             
             _peerPool.AddPreLibBlockHeightAndHash(blockHeight, blockHash, preLibCount);
 
-            var preLibConfirm = new PeerPreLibConfirmAnnouncement
+            var preLibConfirm = new PreLibConfirmAnnouncement
             {
                 BlockHash = blockHash,
                 BlockHeight = blockHeight,
                 PreLibCount = preLibCount
             };
             
-           _taskQueueManager.Enqueue(async () =>
-           {
-               foreach (var peer in _peerPool.GetPeers().Where(p => p.CanStreamPreLibConfirmAnnounces))
-               {
-                   try
-                   {
-                       await peer.PreLibConfirmAnnounceAsync(preLibConfirm);
-                   }
-                   catch (NetworkException ex)
-                   {
-                       Logger.LogError(ex, $"Error while announcing pre lib confirm to {peer}.");
-                       await HandleNetworkException(peer, ex);
-                   }
-               }
-                    
-           }, NetworkConstants.PreLibConfirmAnnouncementBroadcastQueueName);
-           return Task.CompletedTask;
-        }
-        
-        public void BroadcastTransaction(Transaction tx)
-        {
+            var beforeEnqueue = TimestampHelper.GetUtcNow();
             _taskQueueManager.Enqueue(async () =>
             {
+                var execTime = TimestampHelper.GetUtcNow();
+                if (execTime > beforeEnqueue +
+                    TimestampHelper.DurationFromMilliseconds(NetworkConstants.AnnouncementQueueJobTimeout))
+                {
+                    Logger.LogWarning($"Pre lib confirm too old: {execTime - beforeEnqueue}");
+                    return;
+                }
+
                 foreach (var peer in _peerPool.GetPeers())
                 {
                     try
                     {
-                        await peer.SendTransactionAsync(tx);
+                        await peer.SendPreLibConfirmAnnounceAsync(preLibConfirm);
+                    }
+                    catch (NetworkException ex)
+                    {
+                        Logger.LogError(ex, $"Error while announcing pre lib confirm to {peer}.");
+                        await HandleNetworkException(peer, ex);
+                    }
+                }
+
+            }, NetworkConstants.PreLibConfirmAnnouncementBroadcastQueueName);
+            return Task.CompletedTask;
+        }
+        
+        public Task BroadcastTransactionAsync(Transaction transaction)
+        {
+            var beforeEnqueue = TimestampHelper.GetUtcNow();
+            _taskQueueManager.Enqueue(async () =>
+            {
+                var execTime = TimestampHelper.GetUtcNow();
+                if (execTime > beforeEnqueue +
+                    TimestampHelper.DurationFromMilliseconds(NetworkConstants.TransactionQueueJobTimeout))
+                {
+                    Logger.LogWarning($"Transaction too old: {execTime - beforeEnqueue}");
+                    return;
+                }
+                
+                foreach (var peer in _peerPool.GetPeers())
+                {
+                    try
+                    {
+                        await peer.SendTransactionAsync(transaction);
                     }
                     catch (NetworkException ex)
                     {
@@ -165,6 +201,8 @@ namespace AElf.OS.Network.Application
                 }
                 
             }, NetworkConstants.TransactionBroadcastQueueName);
+
+            return Task.CompletedTask;
         }
 
         public async Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousBlock, int count, 
@@ -199,14 +237,14 @@ namespace AElf.OS.Network.Application
             
             if (bestPeer == null)
                 Logger.LogWarning("No best peer.");
-            else if (bestPeer.PubKey != peerPubKey)
+            else if (bestPeer.Info.Pubkey != peerPubKey)
                 peers.Add(bestPeer);
             
             Random rnd = new Random();
             
             // Fill with random peers.
             List<IPeer> randomPeers = _peerPool.GetPeers()
-                .Where(p => p.PubKey != peerPubKey && (bestPeer == null || p.PubKey != bestPeer.PubKey))
+                .Where(p => p.Info.Pubkey != peerPubKey && (bestPeer == null || p.Info.Pubkey != bestPeer.Info.Pubkey))
                 .OrderBy(x => rnd.Next())
                 .Take(NetworkConstants.DefaultMaxRandomPeersPerRequest)
                 .ToList();
@@ -223,7 +261,7 @@ namespace AElf.OS.Network.Application
             Logger.LogDebug($"Getting block by hash, hash: {hash} from {peer}.");
             
             var peers = SelectPeers(peer);
-            return await RequestAsync(peers, p => p.RequestBlockAsync(hash), blockWithTransactions => blockWithTransactions != null, peer);
+            return await RequestAsync(peers, p => p.GetBlockByHashAsync(hash), blockWithTransactions => blockWithTransactions != null, peer);
         }
 
         private async Task<(IPeer, T)> DoRequest<T>(IPeer peer, Func<IPeer, Task<T>> func) where T : class
@@ -236,7 +274,7 @@ namespace AElf.OS.Network.Application
             }
             catch (NetworkException ex)
             {
-                Logger.LogError(ex, $"Error while requesting block from {peer.PeerIpAddress}.");
+                Logger.LogError(ex, $"Error while requesting block(s) from {peer.IpAddress}.");
                 await HandleNetworkException(peer, ex);
             }
             
@@ -247,60 +285,12 @@ namespace AElf.OS.Network.Application
         {
             if (exception.ExceptionType == NetworkExceptionType.Unrecoverable)
             {
-                await _peerPool.RemovePeerAsync(peer.PubKey, false);
+                await _peerPool.RemovePeerAsync(peer.Info.Pubkey, false);
             }
             else if (exception.ExceptionType == NetworkExceptionType.PeerUnstable)
             {
-                Logger.LogError($"Queuing peer for reconnection {peer.PeerIpAddress}.");
+                Logger.LogError($"Queuing peer for reconnection {peer.IpAddress}.");
                 QueueNetworkTask(async () => await RecoverPeerAsync(peer));
-            }
-            else if (exception.ExceptionType == NetworkExceptionType.AnnounceStream)
-            {
-                Logger.LogDebug($"Queuing peer for announcement stream recreation {peer.PeerIpAddress}.");
-                QueueNetworkTask(() => RestartAnnouncementStreamingAsync(peer));
-            }
-            else if (exception.ExceptionType == NetworkExceptionType.PreLibAnnounceStream)
-            {
-                Logger.LogDebug($"Queuing peer for pre lib announcement stream recreation {peer.PeerIpAddress}.");
-                
-                QueueNetworkTask(() =>
-                {
-                    if (!peer.CanStreamPreLibAnnounces)
-                    {
-                        peer.StartPreLibAnnouncementStreaming();
-                        Logger.LogDebug($"Started pre lib announcement stream {peer.PeerIpAddress}.");
-                    }
-                    else
-                    {
-                        Logger.LogDebug($"Already started pre lib announcement stream {peer.PeerIpAddress}.");
-                    }
-                    
-                    return Task.CompletedTask;
-                });
-            }
-            else if (exception.ExceptionType == NetworkExceptionType.PreLibConfirmAnnounceStream)
-            {
-                Logger.LogDebug($"Queuing peer for pre lib confirm announcement stream recreation {peer.PeerIpAddress}.");
-                
-                QueueNetworkTask(() =>
-                {
-                    if (!peer.CanStreamPreLibConfirmAnnounces)
-                    {
-                        peer.StartPreLibConfirmAnnouncementStreaming();
-                        Logger.LogDebug($"Started pre lib confirm announcement stream {peer.PeerIpAddress}.");
-                    }
-                    else
-                    {
-                        Logger.LogDebug($"Already started pre lib confirm announcement stream {peer.PeerIpAddress}.");
-                    }
-                    
-                    return Task.CompletedTask;
-                });
-            }
-            else if (exception.ExceptionType == NetworkExceptionType.TransactionStream)
-            {
-                Logger.LogDebug($"Queuing peer for transaction stream recreation {peer.PeerIpAddress}.");
-                QueueNetworkTask(() => RestartTransactionStreaming(peer));
             }
         }
         
@@ -309,52 +299,10 @@ namespace AElf.OS.Network.Application
             if (peer.IsReady) // peer recovered already
                 return;
                 
-            var success = await peer.TryWaitForStateChangedAsync();
+            var success = await peer.TryRecoverAsync();
 
             if (!success)
-                await _peerPool.RemovePeerAsync(peer.PubKey, false);
-        }
-
-        private Task RestartAnnouncementStreamingAsync(IPeer peer)
-        {
-            if (!peer.IsReady)
-            {
-                Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
-                return Task.CompletedTask;
-            }
-
-            if (!peer.CanStreamAnnounces)
-            {
-                peer.StartAnnouncementStreaming();
-                Logger.LogDebug($"Started announcement stream {peer.PeerIpAddress}.");
-            }
-            else
-            {
-                Logger.LogDebug($"Already started announcement stream {peer.PeerIpAddress}.");
-            }
-
-            return Task.CompletedTask;
-        }
-        
-        private Task RestartTransactionStreaming(IPeer peer)
-        {
-            if (!peer.IsReady)
-            {
-                Logger.LogDebug($"Peer {peer} is unstable, will not start streaming.");
-                return Task.CompletedTask;
-            }
-                    
-            if (!peer.CanStreamTransactions)
-            {
-                peer.StartTransactionStreaming();
-                Logger.LogDebug($"Started transaction stream {peer.PeerIpAddress}.");
-            }
-            else
-            {
-                Logger.LogDebug($"Already started transaction stream {peer.PeerIpAddress}.");
-            }
-
-            return Task.CompletedTask;
+                await _peerPool.RemovePeerAsync(peer.Info.Pubkey, false);
         }
         
         private void QueueNetworkTask(Func<Task> task)
@@ -399,8 +347,8 @@ namespace AElf.OS.Network.Application
             
             UpdateBestPeer(taskPeer);
             
-            if (suggested != taskPeer.PubKey)
-                Logger.LogWarning($"Suggested {suggested}, used {taskPeer.PubKey}");
+            if (suggested != taskPeer.Info.Pubkey)
+                Logger.LogWarning($"Suggested {suggested}, used {taskPeer.Info.Pubkey}");
             
             Logger.LogDebug($"First replied {taskRes} : {taskPeer}.");
 
@@ -420,14 +368,6 @@ namespace AElf.OS.Network.Application
             }
                 
             taskPeer.IsBest = true;
-        }
-
-        public Task<long> GetBestChainHeightAsync(string peerPubKey = null)
-        {
-            var peer = !peerPubKey.IsNullOrEmpty()
-                ? _peerPool.FindPeerByPublicKey(peerPubKey)
-                : _peerPool.GetPeers().OrderByDescending(p => p.CurrentBlockHeight).FirstOrDefault();
-            return Task.FromResult(peer?.CurrentBlockHeight ?? 0);
         }
     }
 }

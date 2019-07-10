@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.OS.Network.Types;
+using AElf.OS.Network.Grpc;
 using AElf.Types;
 
 namespace AElf.OS.Network.Infrastructure
@@ -8,57 +9,39 @@ namespace AElf.OS.Network.Infrastructure
     public interface IPeer
     {
         bool IsBest { get; set; }
+        bool IsConnected { get; set; }
         bool IsReady { get; }
-        Hash CurrentBlockHash { get; }
-        long CurrentBlockHeight { get; }
-        long LastKnowLibHeight { get; }
         
-        string PeerIpAddress { get; }
-        string PubKey { get; }
-        int ProtocolVersion { get; }
-        long ConnectionTime { get; }
-        bool Inbound { get; }
-        long StartHeight { get; }
-        
+        long LastKnownLibHeight { get; }
+        string IpAddress { get; }
+
+        PeerInfo Info { get; }
+
         IReadOnlyDictionary<long, AcceptedBlockInfo> RecentBlockHeightAndHashMappings { get; }
         
         IReadOnlyDictionary<long, PreLibBlockInfo> PreLibBlockHeightAndHashMappings { get; }
 
-        bool CanStreamTransactions { get; }
-        bool CanStreamAnnounces { get; }
-        bool CanStreamPreLibAnnounces { get; }
-        bool CanStreamPreLibConfirmAnnounces { get;}
+        Task UpdateHandshakeAsync();
+        Task SendAnnouncementAsync(BlockAnnouncement an);
+        Task SendPreLibAnnounceAsync(PreLibAnnouncement preLibAnnouncement);
+        Task SendPreLibConfirmAnnounceAsync(PreLibConfirmAnnouncement preLibConfirmAnnouncement);
+        Task SendTransactionAsync(Transaction transaction);
+        Task<BlockWithTransactions> GetBlockByHashAsync(Hash hash);
 
-        void StartTransactionStreaming();
-        void StartAnnouncementStreaming();
-        void StartPreLibAnnouncementStreaming();
-        void StartPreLibConfirmAnnouncementStreaming();
-        void StartBlockRequestStreaming();
+        Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousHash, int count);
+        Task<NodeList> GetNodesAsync(int count = NetworkConstants.DefaultDiscoveryMaxNodesToRequest);
 
-        Dictionary<string, List<RequestMetric>> GetRequestMetrics();
-
-        void HandlerRemoteAnnounce(PeerNewBlockAnnouncement peerNewBlockAnnouncement);
+        void ProcessReceivedAnnouncement(BlockAnnouncement blockAnnouncement);
         
-        void HandlerRemotePreLibAnnounce(PeerPreLibAnnouncement peerPreLibAnnouncement);
+        void ProcessReceivedPreLibAnnounce(PreLibAnnouncement preLibAnnouncement);
 
         bool HasBlock(long blockHeight, Hash blockHash);
 
         bool HasPreLib(long blockHeight, Hash blockHash);
 
-        Task<bool> TryWaitForStateChangedAsync();
+        Task<bool> TryRecoverAsync();
+        Dictionary<string, List<RequestMetric>> GetRequestMetrics();
 
-        Task UpdateHandshakeAsync();
-        Task FinalizeConnectAsync();
-        Task SendDisconnectAsync();
-        
-        Task StopAsync();
-
-        Task AnnounceAsync(PeerNewBlockAnnouncement an);
-        Task PreLibAnnounceAsync(PeerPreLibAnnouncement peerPreLibAnnouncement);
-        Task PreLibConfirmAnnounceAsync(PeerPreLibConfirmAnnouncement peerPreLibConfirmAnnouncement);
-        Task SendTransactionAsync(Transaction tx);
-        Task<BlockWithTransactions> RequestBlockAsync(Hash hash);
-        Task<List<BlockWithTransactions>> GetBlocksAsync(Hash previousHash, int count);
-        Task<NodeList> GetNodesAsync(int count = NetworkConstants.DefaultDiscoveryMaxNodesToRequest);
+        Task DisconnectAsync(bool gracefulDisconnect);
     }
 }

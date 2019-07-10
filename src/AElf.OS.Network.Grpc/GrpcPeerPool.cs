@@ -19,8 +19,6 @@ using Grpc.Core.Interceptors;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Volo.Abp.DependencyInjection;
-using Volo.Abp.EventBus;
 using Volo.Abp.EventBus.Local;
 using Volo.Abp.Threading;
 
@@ -80,7 +78,8 @@ namespace AElf.OS.Network.Grpc
 
             var (channel, client) = await CreateClientAsync(ipAddress);
 
-            ConnectReply connectReply = await TryConnectAsync(client, ipAddress);
+            var handshake = await BuildHandshakeAsync();
+            ConnectReply connectReply = await TryConnectAsync(client, ipAddress, handshake);
 
             if (connectReply == null)
             {
@@ -90,17 +89,16 @@ namespace AElf.OS.Network.Grpc
             
             var pubKey = connectReply.Handshake.HandshakeData.Pubkey.ToHex();
             
-            var connectionInfo = new GrpcPeerInfo 
+            var connectionInfo = new PeerInfo 
             { 
-                PublicKey = pubKey, 
-                PeerIpAddress = ipAddress,
+                Pubkey = pubKey, 
                 ProtocolVersion = connectReply.Handshake.HandshakeData.Version,
                 ConnectionTime = TimestampHelper.GetUtcNow().Seconds,
                 StartHeight = connectReply.Handshake.BestChainBlockHeader.Height,
                 LibHeightAtHandshake = connectReply.Handshake.LibBlockHeight
             };
 
-            var peer = new GrpcPeer(channel, client, connectionInfo);
+            var peer = new GrpcPeer(channel, client, ipAddress, connectionInfo);
 
             if (!_authenticatedPeers.TryAdd(pubKey, peer))
             {
@@ -109,15 +107,16 @@ namespace AElf.OS.Network.Grpc
                 return false;
             }
 
-            await peer.FinalizeConnectAsync();
+            var finalizeReply = await peer.FinalizeConnectAsync(handshake);
             
-            peer.StartBlockRequestStreaming();
-            peer.StartAnnouncementStreaming();
-            peer.StartTransactionStreaming();
-            peer.StartPreLibAnnouncementStreaming();
-            peer.StartPreLibConfirmAnnouncementStreaming();
+            if (finalizeReply == null || !finalizeReply.Success)
+            {
+                Logger.LogWarning($"Could not finalize connection to {ipAddress} - {pubKey}");
+                await RemovePeerAsync(pubKey, true); // remove and cleanup
+                return false;
+            }
             
-            Logger.LogTrace($"Connected to {peer} -- height {peer.StartHeight}.");
+            Logger.LogTrace($"Connected to {peer} -- height {peer.Info.StartHeight}.");
             
             await _nodeManager.AddNodeAsync(new Node { Pubkey = pubKey.ToByteString(), Endpoint = ipAddress});
             
@@ -128,14 +127,14 @@ namespace AElf.OS.Network.Grpc
 
         private void FireConnectionEvent(ConnectReply connectReply, string pubKey)
         {
-            _ = EventBus.PublishAsync(new AnnouncementReceivedEventData(new PeerNewBlockAnnouncement
+            _ = EventBus.PublishAsync(new AnnouncementReceivedEventData(new BlockAnnouncement
             {
                 BlockHash = connectReply.Handshake.BestChainBlockHeader.GetHash(),
                 BlockHeight = connectReply.Handshake.BestChainBlockHeader.Height
             }, pubKey));
         }
         
-        private async Task<ConnectReply> TryConnectAsync(PeerService.PeerServiceClient client, string ipAddress)
+        private async Task<ConnectReply> TryConnectAsync(PeerService.PeerServiceClient client, string ipAddress, Handshake handshake)
         {
             ConnectReply connectReply;
             
@@ -144,9 +143,7 @@ namespace AElf.OS.Network.Grpc
                 Metadata data = new Metadata {
                     {GrpcConstants.TimeoutMetadataKey, _networkOptions.PeerDialTimeoutInMilliSeconds.ToString()}};
                 
-                var hsk = await BuildHandshakeAsync();
-                
-                connectReply = await client.ConnectAsync(hsk, data);
+                connectReply = await client.ConnectAsync(handshake, data);
             }
             catch (AggregateException e)
             {
@@ -202,7 +199,7 @@ namespace AElf.OS.Network.Grpc
         public IPeer FindPeerByAddress(string peerAddress)
         {
             return _authenticatedPeers
-                .Where(p => p.Value.PeerIpAddress == peerAddress)
+                .Where(p => p.Value.IpAddress == peerAddress)
                 .Select(p => p.Value)
                 .FirstOrDefault();
         }
@@ -229,16 +226,16 @@ namespace AElf.OS.Network.Grpc
             
             string localPubKey = AsyncHelper.RunSync(_accountService.GetPublicKeyAsync).ToHex();
 
-            if (peer.PubKey == localPubKey)
-                throw new InvalidOperationException($"Connection to self detected {peer.PubKey} ({peer.PeerIpAddress})");
+            if (peer.Info.Pubkey == localPubKey)
+                throw new InvalidOperationException($"Connection to self detected {peer.Info.Pubkey} ({peer.IpAddress})");
 
-            if (!_authenticatedPeers.TryAdd(p.PubKey, p))
+            if (!_authenticatedPeers.TryAdd(p.Info.Pubkey, p))
             {
-                Logger.LogWarning($"Could not add peer {peer.PubKey} ({peer.PeerIpAddress})");
+                Logger.LogWarning($"Could not add peer {peer.Info.Pubkey} ({peer.IpAddress})");
                 return false;
             }
             
-            AsyncHelper.RunSync(() => _nodeManager.AddNodeAsync(new Node { Pubkey = p.PubKey.ToByteString(), Endpoint = p.PeerIpAddress}));
+            AsyncHelper.RunSync(() => _nodeManager.AddNodeAsync(new Node { Pubkey = p.Info.Pubkey.ToByteString(), Endpoint = p.IpAddress}));
             
             return true;
         }
@@ -275,10 +272,10 @@ namespace AElf.OS.Network.Grpc
 
         public async Task<bool> RemovePeerByAddressAsync(string address)
         {
-            var peer = _authenticatedPeers.FirstOrDefault(p => p.Value.PeerIpAddress == address).Value;
+            var peer = _authenticatedPeers.FirstOrDefault(p => p.Value.IpAddress == address).Value;
 
             if (peer != null) 
-                return await RemovePeerAsync(peer.PubKey, true) != null;
+                return await RemovePeerAsync(peer.Info.Pubkey, true) != null;
             
             Logger.LogWarning($"Could not find peer {address}.");
             
@@ -289,20 +286,7 @@ namespace AElf.OS.Network.Grpc
         {
             if (_authenticatedPeers.TryRemove(publicKey, out GrpcPeer removed))
             {
-                if (sendDisconnect)
-                {
-                    try
-                    {
-                        await removed.SendDisconnectAsync();
-                    }
-                    catch (RpcException e)
-                    {
-                        Logger.LogError(e, $"Error sending disconnect to peer {removed}.");
-                    }
-                }
-                
-                await removed.StopAsync();
-                
+                await removed.DisconnectAsync(sendDisconnect);
                 Logger.LogDebug($"Removed peer {removed}");
             }
             else
@@ -311,6 +295,16 @@ namespace AElf.OS.Network.Grpc
             }
 
             return removed;
+        }
+
+        public async Task ClearAllPeersAsync(bool sendDisconnect)
+        {
+            var peersToRemove = _authenticatedPeers.Keys.ToList();
+            
+            foreach (string peer in peersToRemove)
+            {
+                await RemovePeerAsync(peer, sendDisconnect);
+            }
         }
         
         public void AddRecentBlockHeightAndHash(long blockHeight,Hash blockHash, bool hasFork)
@@ -331,7 +325,7 @@ namespace AElf.OS.Network.Grpc
                 };
             }
             _recentBlockHeightAndHashMappings[blockHeight] = blockInfo;
-            while (_recentBlockHeightAndHashMappings.Count > 40)
+            while (_recentBlockHeightAndHashMappings.Count > 20)
             {
                 _recentBlockHeightAndHashMappings.TryRemove(_recentBlockHeightAndHashMappings.Keys.Min(), out _);
             }
@@ -355,7 +349,7 @@ namespace AElf.OS.Network.Grpc
                 };
             }
             _preLibBlockHeightAndHashMappings[blockHeight] = preLibBlockInfo;
-            while (_preLibBlockHeightAndHashMappings.Count > 40)
+            while (_preLibBlockHeightAndHashMappings.Count > 20)
             {
                 _preLibBlockHeightAndHashMappings.TryRemove(_preLibBlockHeightAndHashMappings.Keys.Min(), out _);
             }

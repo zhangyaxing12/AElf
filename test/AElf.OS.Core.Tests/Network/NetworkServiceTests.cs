@@ -12,13 +12,11 @@ namespace AElf.OS.Network
     {
         private readonly INetworkService _networkService;
         private readonly IPeerPool _peerPool;
-        private readonly OSTestHelper _osTestHelper;
 
         public NetworkServiceTests()
         {
             _networkService = GetRequiredService<INetworkService>();
             _peerPool = GetRequiredService<IPeerPool>();
-            _osTestHelper = GetRequiredService<OSTestHelper>();
         }
 
         #region GetBlocks
@@ -62,7 +60,7 @@ namespace AElf.OS.Network
         [Fact]
         public void GetPeers_ShouldIncludeFailing()
         {
-            Assert.Equal(_networkService.GetPeerIpList().Count, _peerPool.GetPeers(true).Count);
+            Assert.Equal(_networkService.GetPeers().Count, _peerPool.GetPeers(true).Count);
         }
         
         #endregion GetPeers

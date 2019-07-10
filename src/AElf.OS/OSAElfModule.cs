@@ -5,12 +5,9 @@ using AElf.OS.Handlers;
 using AElf.OS.Network;
 using AElf.OS.Network.Grpc;
 using AElf.OS.Worker;
-using AElf.Types;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Volo.Abp;
-using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.Modularity;
 
 namespace AElf.OS
@@ -28,9 +25,8 @@ namespace AElf.OS
             var configuration = context.Services.GetConfiguration();
 
             context.Services.AddAssemblyOf<OSAElfModule>();
-
-            context.Services.AddSingleton<PeerConnectedEventHandler>();
             context.Services.AddSingleton<AnnouncementReceivedEventHandler>();
+            context.Services.AddSingleton<AnnouncementCountEventHandler>();
             context.Services.AddSingleton<PreLibAnnouncementReceivedEventHandler>();
             context.Services.AddSingleton<PeerDiscoveryWorker>();
 

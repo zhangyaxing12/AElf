@@ -31,7 +31,6 @@ namespace AElf.OS
                     .Returns<string>((adr) => null);
                 peerPoolMock.Setup(p => p.GetPeers(It.IsAny<bool>()))
                     .Returns(new List<IPeer>());
-                peerPoolMock.Setup(p => p.RecentBlockHeightAndHashMappings).Returns(new Dictionary<long,AcceptedBlockInfo>());
                 
                 return peerPoolMock.Object;
             });
