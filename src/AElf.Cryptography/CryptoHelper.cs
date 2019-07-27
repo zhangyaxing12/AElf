@@ -79,6 +79,11 @@ namespace AElf.Cryptography
             try
             {
                 Lock.AcquireWriterLock(Timeout.Infinite);
+                if (privateKey.Length != Secp256k1.PRIVKEY_LENGTH)
+                    throw new ArgumentException("invalid private key.", nameof(privateKey));
+                if (hash.Length != Secp256k1.HASH_LENGTH)
+                    throw new ArgumentException("invalid hash.", nameof(hash));
+
                 var recSig = new byte[65];
                 var compactSig = new byte[65];
                 Secp256K1.SignRecoverable(recSig, hash, privateKey);
@@ -104,8 +109,10 @@ namespace AElf.Cryptography
             try
             {
                 Lock.AcquireWriterLock(Timeout.Infinite);
-                if (signature.Length != Secp256k1.SERIALIZED_UNCOMPRESSED_PUBKEY_LENGTH)
+                if (signature.Length != Secp256k1.SERIALIZED_UNCOMPRESSED_PUBKEY_LENGTH ||
+                    hash.Length != Secp256k1.HASH_LENGTH)
                     return false;
+
                 var pubKey = new byte[Secp256k1.SERIALIZED_UNCOMPRESSED_PUBKEY_LENGTH];
                 var recoveredPubKey = new byte[Secp256k1.PUBKEY_LENGTH];
                 var recSig = new byte[65];
@@ -142,6 +149,11 @@ namespace AElf.Cryptography
             try
             {
                 Lock.AcquireWriterLock(Timeout.Infinite);
+                if (privateKey.Length != Secp256k1.PRIVKEY_LENGTH)
+                    throw new ArgumentException("invalid private key.", nameof(privateKey));
+                if (publicKey.Length != Secp256k1.SERIALIZED_UNCOMPRESSED_PUBKEY_LENGTH)
+                    throw new ArgumentException("invalid public key.", nameof(publicKey));
+
                 var usablePublicKey = new byte[Secp256k1.SERIALIZED_UNCOMPRESSED_PUBKEY_LENGTH];
                 Secp256K1.PublicKeyParse(usablePublicKey, publicKey);
                 var ecdhKey = new byte[Secp256k1.SERIALIZED_COMPRESSED_PUBKEY_LENGTH];
