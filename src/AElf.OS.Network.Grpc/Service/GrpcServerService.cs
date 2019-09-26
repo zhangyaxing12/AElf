@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Threading.Tasks;
 using AElf.Kernel.Blockchain.Application;
@@ -48,10 +49,12 @@ namespace AElf.OS.Network.Grpc
 
         public override async Task<HandshakeReply> DoHandshake(HandshakeRequest request, ServerCallContext context)
         {
-            Logger.LogDebug($"Peer {context.GetPeerInfo()} has requested a handshake.");
-            
+            Logger.LogDebug($"Peer {context.Peer} has requested a handshake.");
+
             if(!UriHelper.TryParsePrefixedEndpoint(context.Peer, out IPEndPoint peerEndpoint))
                 return new HandshakeReply { Error = HandshakeError.InvalidConnection};
+            
+            Logger.LogDebug($"Peer {context.Peer} : ip parsed");
             
             return await _connectionService.DoHandshakeAsync(peerEndpoint, request.Handshake);
         }

@@ -59,7 +59,10 @@ namespace AElf.OS.Network.Protocol
 
         public Task<HandshakeValidationResult> ValidateHandshakeAsync(Handshake handshake)
         {
+            Logger.LogDebug($"Validation.");
+            
             var pubkey = handshake.HandshakeData.Pubkey.ToHex();
+            Logger.LogDebug($"Hex pubkey: {pubkey}");
             if (_networkOptions.AuthorizedPeers == AuthorizedPeers.Authorized &&
                 !_networkOptions.AuthorizedKeys.Contains(pubkey))
             {
@@ -67,11 +70,16 @@ namespace AElf.OS.Network.Protocol
             }
 
             var chainId = _blockchainService.GetChainId();
+            
+            Logger.LogDebug($"chain id: {chainId}");
+            
             if (handshake.HandshakeData.ChainId != chainId)
             {
                 Logger.LogWarning($"Chain is is incorrect: {handshake.HandshakeData.ChainId}.");
                 return Task.FromResult(HandshakeValidationResult.InvalidChainId);
             }
+            
+            Logger.LogDebug($"version: {handshake.HandshakeData.Version}");
 
             if (handshake.HandshakeData.Version != KernelConstants.ProtocolVersion)
             {
@@ -79,7 +87,10 @@ namespace AElf.OS.Network.Protocol
                 return Task.FromResult(HandshakeValidationResult.InvalidVersion);
             }
 
-            if (TimestampHelper.GetUtcNow() > handshake.HandshakeData.Time +
+            var utcNow = TimestampHelper.GetUtcNow();
+            Logger.LogDebug($"Utc: {utcNow}");
+
+            if (utcNow > handshake.HandshakeData.Time +
                 TimestampHelper.DurationFromMilliseconds(NetworkConstants.HandshakeTimeout))
             {
                 Logger.LogWarning("Handshake is expired.");

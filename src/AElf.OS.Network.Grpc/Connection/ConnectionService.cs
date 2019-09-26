@@ -110,6 +110,8 @@ namespace AElf.OS.Network.Grpc.Connection
 
         public async Task<HandshakeReply> DoHandshakeAsync(IPEndPoint endpoint, Handshake handshake)
         {
+            Logger.LogDebug($"About to validate handshake for {endpoint}.");
+            
             var handshakeValidationResult = await _handshakeProvider.ValidateHandshakeAsync(handshake);
             if (handshakeValidationResult != HandshakeValidationResult.Ok)
             {
