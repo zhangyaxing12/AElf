@@ -134,7 +134,7 @@ namespace AElf.Kernel.SmartContract.Application
                 {
                     TransactionId = transaction.GetHash(),
                     ExecutionStatus = ExecutionStatus.Canceled,
-                    Error = "Execution cancelled"
+                    Error = $"{transaction.MethodName} Execution cancelled"
                 };
             }
 
