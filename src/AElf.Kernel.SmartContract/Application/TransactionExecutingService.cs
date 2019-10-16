@@ -11,11 +11,12 @@ using AElf.Types;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Volo.Abp.DependencyInjection;
 using Volo.Abp.EventBus.Local;
 
 namespace AElf.Kernel.SmartContract.Application
 {
-    public class TransactionExecutingService : ITransactionExecutingService
+    public class TransactionExecutingService : INonParallelTransactionExecutingService,ISingletonDependency
     {
         private readonly ISmartContractExecutiveService _smartContractExecutiveService;
         private readonly List<IPreExecutionPlugin> _prePlugins;
