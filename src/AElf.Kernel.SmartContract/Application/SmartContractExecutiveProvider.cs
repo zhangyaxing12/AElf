@@ -47,8 +47,8 @@ namespace AElf.Kernel.SmartContract.Application
         private Hash _initLibBlockHash = Hash.Empty;
         private long _initLibBlockHeight;
 
-        private const int ExecutiveExpirationTime = 3600; // 1 Hour
-        private const int ExecutiveClearLimit = 10;
+        private const int ExecutiveExpirationTime = 60; // 1 Hour
+        private const int ExecutiveClearLimit = 3;
 
         private readonly IDeployedContractAddressProvider _deployedContractAddressProvider;
         private readonly IDefaultContractZeroCodeProvider _defaultContractZeroCodeProvider;
@@ -353,6 +353,12 @@ namespace AElf.Kernel.SmartContract.Application
             {
                 foreach (var executiveBag in executivePool.Value.Values)
                 {
+                    Logger.LogTrace($"Current executive: address: {executivePool.Key}, count: {executiveBag.Count}");
+                    foreach (var executive in executiveBag)
+                    {
+                        Logger.LogTrace($"executive LastUsedTime: {executive.LastUsedTime}");
+                    }
+
                     if (executiveBag.Count > ExecutiveClearLimit && executiveBag.Last().LastUsedTime <
                         TimestampHelper.GetUtcNow() - TimestampHelper.DurationFromSeconds(ExecutiveExpirationTime))
                     {
