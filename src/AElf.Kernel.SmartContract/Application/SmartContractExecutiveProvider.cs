@@ -48,7 +48,7 @@ namespace AElf.Kernel.SmartContract.Application
         private long _initLibBlockHeight;
 
         private const int ExecutiveExpirationTime = 60; // 1 Hour
-        private const int ExecutiveClearLimit = 3;
+        private const int ExecutiveClearLimit = 1;
 
         private readonly IDeployedContractAddressProvider _deployedContractAddressProvider;
         private readonly IDefaultContractZeroCodeProvider _defaultContractZeroCodeProvider;
@@ -358,14 +358,10 @@ namespace AElf.Kernel.SmartContract.Application
                     {
                         Logger.LogTrace($"executive LastUsedTime: {executive.LastUsedTime}");
                     }
-
-                    if (executiveBag.Count > ExecutiveClearLimit && executiveBag.Last().LastUsedTime <
-                        TimestampHelper.GetUtcNow() - TimestampHelper.DurationFromSeconds(ExecutiveExpirationTime))
+                    
+                    if (executiveBag.TryTake(out _))
                     {
-                        if (executiveBag.TryTake(out _))
-                        {
-                            Logger.LogDebug($"Cleaned an idle executive for address {executivePool.Key}.");
-                        }
+                        Logger.LogDebug($"Cleaned an idle executive for address {executivePool.Key}.");
                     }
                 }
             }
