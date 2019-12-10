@@ -353,6 +353,12 @@ namespace AElf.Kernel.SmartContract.Application
             {
                 foreach (var executiveBag in executivePool.Value.Values)
                 {
+                    Logger.LogTrace($"Current executive: address: {executivePool.Key}, count: {executiveBag.Count}");
+                    foreach (var executive in executiveBag)
+                    {
+                        Logger.LogTrace($"executive LastUsedTime: {executive.LastUsedTime}");
+                    }
+
                     if (executiveBag.Count > ExecutiveClearLimit && executiveBag.Last().LastUsedTime <
                         TimestampHelper.GetUtcNow() - TimestampHelper.DurationFromSeconds(ExecutiveExpirationTime))
                     {
