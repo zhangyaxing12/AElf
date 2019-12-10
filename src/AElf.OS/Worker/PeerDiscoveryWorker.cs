@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using AElf.OS.Network;
 using AElf.OS.Network.Application;
@@ -12,6 +16,43 @@ using Volo.Abp.Threading;
 
 namespace AElf.OS.Worker
 {
+    public class AssemblyPrinterWorker : PeriodicBackgroundWorkerBase, ISingletonDependency
+    {
+        public new ILogger<AssemblyPrinterWorker> Logger { get; set; }
+
+        public AssemblyPrinterWorker(AbpTimer timer) : base(timer)
+        {
+            Timer.Period = 15_000;
+        }
+
+        protected override void DoWork()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            
+            Logger.LogDebug($"Total assembly count: {assemblies.Length}.");
+
+            var concernedAssemblies = assemblies
+                .Where(a => !a.GetName().ToString().Contains("System")
+                            && !a.GetName().ToString().Contains("Microsoft")
+                            && !a.GetName().ToString().Contains("Microsoft")
+                            && !a.GetName().ToString().Contains("Volo") )
+                .GroupBy(k => k.GetName().Name);
+
+            foreach (IGrouping<string, Assembly> asm in concernedAssemblies.Where(a => a.Count() > 1 || a.Key.Contains("HelloWorldContract")).OrderByDescending(a => a.Count()))
+            {
+                Logger.LogDebug($"Assembly: {asm.Key}, loaded count {asm.Count()} elements.");
+            }
+
+            assemblies = null;
+            
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+    }
+
     public class PeerDiscoveryWorker : PeriodicBackgroundWorkerBase, ISingletonDependency
     {
         private readonly IPeerDiscoveryService _peerDiscoveryService;

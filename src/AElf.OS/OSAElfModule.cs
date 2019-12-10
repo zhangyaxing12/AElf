@@ -43,6 +43,9 @@ namespace AElf.OS
                 var peerDiscoveryWorker = context.ServiceProvider.GetService<PeerDiscoveryWorker>();
                 backgroundWorkerManager.Add(peerDiscoveryWorker);
             }
+            
+            var assemblyPrinter = context.ServiceProvider.GetService<AssemblyPrinterWorker>();
+            backgroundWorkerManager.Add(assemblyPrinter);
 
             backgroundWorkerManager.Add(context.ServiceProvider.GetService<BlockDownloadWorker>());
             backgroundWorkerManager.Add(context.ServiceProvider.GetService<PeerReconnectionWorker>());
