@@ -353,15 +353,13 @@ namespace AElf.Kernel.SmartContract.Application
             {
                 foreach (var executiveBag in executivePool.Value.Values)
                 {
-                    Logger.LogTrace($"Current executive: address: {executivePool.Key}, count: {executiveBag.Count}");
-                    foreach (var executive in executiveBag)
+                    if (executiveBag.Count > ExecutiveClearLimit && executiveBag.Last().LastUsedTime <
+                        TimestampHelper.GetUtcNow() - TimestampHelper.DurationFromSeconds(ExecutiveExpirationTime))
                     {
-                        Logger.LogTrace($"executive LastUsedTime: {executive.LastUsedTime}");
-                    }
-                    
-                    if (executiveBag.TryTake(out _))
-                    {
-                        Logger.LogDebug($"Cleaned an idle executive for address {executivePool.Key}.");
+                        if (executiveBag.TryTake(out _))
+                        {
+                            Logger.LogDebug($"Cleaned an idle executive for address {executivePool.Key}.");
+                        }
                     }
                 }
             }
