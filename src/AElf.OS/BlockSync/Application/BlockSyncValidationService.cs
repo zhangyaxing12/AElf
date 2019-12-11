@@ -33,24 +33,28 @@ namespace AElf.OS.BlockSync.Application
             _blockchainService = blockchainService;
         }
 
-        public Task<bool> ValidateAnnouncementBeforeSyncAsync(Chain chain, BlockAnnouncement blockAnnouncement, string senderPubKey)
+        public Task<bool> ValidateAnnouncementBeforeSyncAsync(Chain chain, BlockAnnouncement blockAnnouncement,
+            string senderPubKey)
         {
             if (!TryCacheNewAnnouncement(blockAnnouncement.BlockHash, blockAnnouncement.BlockHeight, senderPubKey))
             {
+                Logger.LogWarning(
+                    $"Receive same block announcement {{ hash: {blockAnnouncement.BlockHash}, height: {blockAnnouncement.BlockHeight} }} ignore.");
                 return Task.FromResult(false);
             }
 
             if (blockAnnouncement.BlockHeight <= chain.LastIrreversibleBlockHeight)
             {
                 Logger.LogWarning(
-                    $"Receive lower header {{ hash: {blockAnnouncement.BlockHash}, height: {blockAnnouncement.BlockHeight} }} ignore.");
+                    $"Receive lower block announcement {{ hash: {blockAnnouncement.BlockHash}, height: {blockAnnouncement.BlockHeight} }} ignore.");
                 return Task.FromResult(false);
             }
 
             return Task.FromResult(true);
         }
 
-        public Task<bool> ValidateBlockBeforeSyncAsync(Chain chain, BlockWithTransactions blockWithTransactions, string senderPubKey)
+        public Task<bool> ValidateBlockBeforeSyncAsync(Chain chain, BlockWithTransactions blockWithTransactions,
+            string senderPubKey)
         {
             if (blockWithTransactions.Height <= chain.LastIrreversibleBlockHeight)
             {
@@ -66,7 +70,7 @@ namespace AElf.OS.BlockSync.Application
 
             return Task.FromResult(true);
         }
-        
+
         public async Task<bool> ValidateBlockBeforeAttachAsync(BlockWithTransactions blockWithTransactions)
         {
             if (!await _blockValidationService.ValidateBlockBeforeAttachAsync(blockWithTransactions))
@@ -93,7 +97,7 @@ namespace AElf.OS.BlockSync.Application
             {
                 if (!transaction.VerifyExpiration(blockWithTransactions.Height - 1))
                 {
-                    Logger.LogWarning($"Transaction {transaction.GetHash()} expired.");
+                    Logger.LogWarning($"Transaction {transaction.GetHash()} has expired.");
                     return false;
                 }
 

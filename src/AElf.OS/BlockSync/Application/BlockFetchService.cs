@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using AElf.Kernel.Blockchain.Application;
 using AElf.OS.BlockSync.Events;
-using AElf.OS.BlockSync.Exceptions;
 using AElf.OS.Network.Application;
 using AElf.Types;
 using Microsoft.Extensions.Logging;

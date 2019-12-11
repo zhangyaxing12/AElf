@@ -6,9 +6,10 @@ namespace AElf.OS.BlockSync.Infrastructure
 {
     public class AnnouncementCacheProvider : IAnnouncementCacheProvider, ISingletonDependency
     {
-        private ConcurrentDictionary<Hash, AnnouncementCache> _cache = new ConcurrentDictionary<Hash, AnnouncementCache>();
+        private readonly ConcurrentDictionary<Hash, AnnouncementCache> _cache =
+            new ConcurrentDictionary<Hash, AnnouncementCache>();
 
-        private ConcurrentQueue<Hash> _toBeCleanedKeys = new ConcurrentQueue<Hash>();
+        private readonly ConcurrentQueue<Hash> _toBeCleanedKeys = new ConcurrentQueue<Hash>();
 
         /// <summary>
         /// Cache received announcement if it is new one. If not, update sender public key collection.
@@ -58,10 +59,10 @@ namespace AElf.OS.BlockSync.Infrastructure
 
             senderPubKey = null;
             return false;
-        }  
+        }
     }
 
-    class AnnouncementCache
+    internal class AnnouncementCache
     {
         public Hash BlockHash { get; set; }
         public long BlockHeight { get; set; }

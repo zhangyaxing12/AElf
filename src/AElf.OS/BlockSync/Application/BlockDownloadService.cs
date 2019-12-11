@@ -49,9 +49,9 @@ namespace AElf.OS.BlockSync.Application
 
         /// <summary>
         /// Download and attach blocks
-        /// UseSuggestedPeer == true: Download blocks from suggested peer directly;
-        /// Target download height > peer lib height, download blocks from suggested peer;
-        /// Target download height <= peer lib height, select a random peer to download.
+        /// UseSuggestedPeer is true: Download blocks from suggested peer directly;
+        /// Target download height is greater than the lib height of suggested peer: Download blocks from suggested peer;
+        /// Target download height is less than or equal to the lib height of suggested peer: Select a random peer to download.
         /// </summary>
         /// <param name="downloadBlockDto"></param>
         /// <returns></returns>
@@ -97,15 +97,16 @@ namespace AElf.OS.BlockSync.Application
                             downloadBlockDto.PreviousBlockHeight);
                     }
                 }
+
+                if (downloadResult.DownloadBlockCount > 0)
+                {
+                    _blockSyncStateProvider.SetDownloadJobTargetState(downloadResult.LastDownloadBlockHash, false);
+                    _blockSyncStateProvider.LastRequestPeerPubkey = peerPubkey;
+                }
             }
             catch (BlockDownloadException e)
             {
-                await LocalEventBus.PublishAsync(new BadPeerFoundEventData
-                {
-                    BlockHash = e.BlockHash,
-                    BlockHeight = e.BlockHeight,
-                    PeerPubkey = e.PeerPubkey
-                });
+                await HandleBlockDownloadExceptionAsync(e);
             }
 
             return downloadResult;
@@ -268,12 +269,6 @@ namespace AElf.OS.BlockSync.Application
                 lastDownloadBlockHeight = lastBlock.Height;
             }
 
-            if (downloadBlockCount != 0)
-            {
-                _blockSyncStateProvider.SetDownloadJobTargetState(lastDownloadBlockHash, false);
-                _blockSyncStateProvider.LastRequestPeerPubkey = peerPubkey;
-            }
-
             return new DownloadBlocksResult
             {
                 Success = true,
@@ -297,6 +292,16 @@ namespace AElf.OS.BlockSync.Application
                         });
                 },
                 OSConstants.BlockSyncAttachQueueName);
+        }
+
+        private async Task HandleBlockDownloadExceptionAsync(BlockDownloadException blockDownloadException)
+        {
+            await LocalEventBus.PublishAsync(new BadPeerFoundEventData
+            {
+                BlockHash = blockDownloadException.BlockHash,
+                BlockHeight = blockDownloadException.BlockHeight,
+                PeerPubkey = blockDownloadException.PeerPubkey
+            });
         }
 
         public bool ValidateQueueAvailabilityBeforeDownload()
