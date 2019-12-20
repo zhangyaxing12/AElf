@@ -34,6 +34,8 @@ namespace AElf.WebApp.Application.Chain
         Task<SendTransactionOutput> SendTransactionAsync(SendTransactionInput input);
 
         Task<string[]> SendTransactionsAsync(SendTransactionsInput input);
+
+        Task<List<string>> GetCheckTransactionResultAsync(long blockHeight);
     }
 
     [ControllerName("BlockChain")]
@@ -196,6 +198,26 @@ namespace AElf.WebApp.Application.Chain
             var txIds = await PublishTransactionsAsync(input.RawTransactions.Split(","));
 
             return txIds;
+        }
+
+        public async Task<List<string>> GetCheckTransactionResultAsync(long blockHeight)
+        {
+            var block = await _blockchainService.GetBlockAtHeightAsync(blockHeight);
+
+            var txIds = block.TransactionIds.ToList();
+            var txs = await _blockchainService.GetTransactionsAsync(txIds);
+
+            var result = new List<string>();
+
+            for (var i = 0; i < txIds.Count; i++)
+            {
+                if (!txs[i].GetHash().Equals(txIds[i]))
+                {
+                    result.Add(txIds[i].ToHex());
+                }
+            }
+
+            return result;
         }
 
         private async Task<string[]> PublishTransactionsAsync(string[] rawTransactions)
