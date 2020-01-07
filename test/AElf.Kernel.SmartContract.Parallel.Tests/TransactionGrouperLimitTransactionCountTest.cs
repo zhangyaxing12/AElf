@@ -22,8 +22,6 @@ namespace AElf.Kernel.SmartContract.Parallel.Tests
             {
                 o.GroupingTimeOut = 200;
                 o.MaxTransactions = 10;
-                o.MaxGroupCount = int.MaxValue;
-                o.MinTransactionCountInGroup = 1;
             });
             context.Services.AddSingleton<ITransactionGrouper, TransactionGrouper>();
             context.Services.AddSingleton<IBlockchainService>(
