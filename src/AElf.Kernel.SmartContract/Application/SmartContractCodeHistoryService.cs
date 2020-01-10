@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AElf.Kernel.SmartContract.Domain;
 using AElf.Types;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Volo.Abp.DependencyInjection;
 
 namespace AElf.Kernel.SmartContract.Application
@@ -17,12 +19,16 @@ namespace AElf.Kernel.SmartContract.Application
     {
         private readonly ISmartContractCodeHistoryProvider _smartContractCodeHistoryProvider;
         private readonly ISmartContractCodeHistoryManager _smartContractCodeHistoryManager;
+        
+        public ILogger<SmartContractCodeHistoryService> Logger { get; set; }
 
         public SmartContractCodeHistoryService(ISmartContractCodeHistoryProvider smartContractCodeHistoryProvider,
             ISmartContractCodeHistoryManager smartContractCodeHistoryManager)
         {
             _smartContractCodeHistoryProvider = smartContractCodeHistoryProvider;
             _smartContractCodeHistoryManager = smartContractCodeHistoryManager;
+            
+            Logger = NullLogger<SmartContractCodeHistoryService>.Instance;
         }
 
         public async Task<SmartContractCodeHistory> GetSmartContractCodeHistoryAsync(Address address)
@@ -30,8 +36,12 @@ namespace AElf.Kernel.SmartContract.Application
             var smartContractCodeHistory = _smartContractCodeHistoryProvider.GetSmartContractCodeHistory(address);
             if (smartContractCodeHistory != null) return smartContractCodeHistory;
             smartContractCodeHistory = await _smartContractCodeHistoryManager.GetSmartContractCodeHistoryAsync(address);
-            if(smartContractCodeHistory != null)
+            if (smartContractCodeHistory != null)
+            {
                 _smartContractCodeHistoryProvider.SetSmartContractCodeHistory(address, smartContractCodeHistory);
+                Logger.LogDebug($"# Set SmartContractCodeHistory for {address.GetFormatted()} in GetSmartContractCodeHistoryAsync");
+            }
+                
             return smartContractCodeHistory;
         }
 
@@ -40,6 +50,7 @@ namespace AElf.Kernel.SmartContract.Application
             var smartContractCodeHistory = await GetSmartContractCodeHistoryAsync(address) ??
                                            new SmartContractCodeHistory();
             _smartContractCodeHistoryProvider.AddSmartContractCode(address, codeHash, blockIndex);
+            Logger.LogDebug($"# Add SmartContractCode for {address.GetFormatted()} in AddSmartContractCodeAsync");
             smartContractCodeHistory.Codes.AddIfNotContains(new SmartContractCode
             {
                 BlockHash = blockIndex.BlockHash,

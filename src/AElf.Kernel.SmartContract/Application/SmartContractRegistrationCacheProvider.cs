@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using AElf.Types;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Volo.Abp.DependencyInjection;
 
 namespace AElf.Kernel.SmartContract.Application
@@ -24,6 +26,13 @@ namespace AElf.Kernel.SmartContract.Application
 
         private readonly ConcurrentDictionary<Address, List<SmartContractRegistrationCache>> _forkCache =
             new ConcurrentDictionary<Address, List<SmartContractRegistrationCache>>();
+        
+        public ILogger<SmartContractRegistrationCacheProvider> Logger { get; set; }
+
+        public SmartContractRegistrationCacheProvider()
+        {
+            Logger = NullLogger<SmartContractRegistrationCacheProvider>.Instance;
+        }
 
         public bool TryGetLibCache(Address address, out SmartContractRegistrationCache cache)
         {
@@ -56,7 +65,8 @@ namespace AElf.Kernel.SmartContract.Application
             //Add genesis block registration cache to lib cache directly
             if (blockIndex.BlockHeight == 1)
             {
-                _libCache.TryAdd(address, smartContractRegistrationCache);
+                var result = _libCache.TryAdd(address, smartContractRegistrationCache);
+                Logger.LogDebug($"# TryAdd lib smartContractRegistrationCache for {address.GetFormatted()} {result} in AddSmartContractRegistration");
                 return;
             }
 
@@ -108,6 +118,7 @@ namespace AElf.Kernel.SmartContract.Application
                     if (registrationCache != null)
                         oldCodeHashes.Add(registrationCache.SmartContractRegistration.CodeHash);
                     _libCache[cache.Address] = cache;
+                    Logger.LogDebug($"# Add lib cache for {address.GetFormatted()} in SetIrreversedCache");
                 }
 
                 _forkCache[address].RemoveAll(cache => blockHashes.Contains(cache.BlockHash));

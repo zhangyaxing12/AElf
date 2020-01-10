@@ -69,6 +69,7 @@ namespace AElf.Kernel.SmartContract.Application
             if (!pool.TryTake(out var executive))
             {
                 executive = await GetExecutiveAsync(reg);
+                Logger.LogDebug($"# Create executive for {address.GetFormatted()} in GetExecutiveAsync");
             }
 
             return executive;
@@ -109,7 +110,7 @@ namespace AElf.Kernel.SmartContract.Application
                     smartContractCode.CodeHash);
                 if(smartContractRegistration == null) continue;
                 executive = await GetExecutiveAsync(smartContractRegistration);
-
+                Logger.LogDebug($"# Create executive for {address.GetFormatted()} in GetHistoryExecutiveAsync");
                 return executive;
             }
             return null;
@@ -126,11 +127,11 @@ namespace AElf.Kernel.SmartContract.Application
                     return;
                 }
 
-                Logger.LogDebug($"Lost an executive (no registration {address})");
+                Logger.LogDebug($"# Lost an executive (no registration {address})");
             }
             else
             {
-                Logger.LogDebug($"Lost an executive (no pool {address})");
+                Logger.LogDebug($"# Lost an executive (no pool {address})");
             }
 
             await Task.CompletedTask;
@@ -148,7 +149,7 @@ namespace AElf.Kernel.SmartContract.Application
                     {
                         if (executiveBag.TryTake(out _))
                         {
-                            Logger.LogDebug($"Cleaned an idle executive for address {executivePool.Key}.");
+                            Logger.LogDebug($"# Cleaned an idle executive for address {executivePool.Key}.");
                         }
                     }
                 }
@@ -234,6 +235,7 @@ namespace AElf.Kernel.SmartContract.Application
                 if (context.BlockHeight > Constants.GenesisBlockHeight)
                 {
                     var executive = await GetExecutiveAsync(smartContractRegistration);
+                    Logger.LogDebug($"# Create executive for {address.GetFormatted()} in GetSmartContractRegistrationCacheFromLibCache");
                     smartContractRegistration =
                         await GetSmartContractRegistrationFromZeroAsync(executive, context, address);
                 }
@@ -251,6 +253,7 @@ namespace AElf.Kernel.SmartContract.Application
                 Address = address
             };
             _smartContractRegistrationCacheProvider.SetLibCache(address, smartContractRegistrationCache);
+            Logger.LogDebug($"# Add lib smartContractRegistrationCache for {address.GetFormatted()} in GetSmartContractRegistrationCacheFromLibCache");
             return smartContractRegistrationCache;
         }
 
@@ -297,6 +300,7 @@ namespace AElf.Kernel.SmartContract.Application
                 {
                     executiveZero =
                         await GetExecutiveAsync(_defaultContractZeroCodeProvider.DefaultContractZeroRegistration);
+                    Logger.LogDebug($"# Create executive for {address.GetFormatted()} in GetSmartContractRegistrationFromZeroAsync Address");
                 }
                 else
                 {
@@ -362,6 +366,7 @@ namespace AElf.Kernel.SmartContract.Application
                 {
                     executiveZero =
                         await GetExecutiveAsync(_defaultContractZeroCodeProvider.DefaultContractZeroRegistration);
+                    Logger.LogDebug($"# Create executive for {address.GetFormatted()} in GetSmartContractRegistrationFromZeroAsync CodeHash");
                 }
                 else
                 {

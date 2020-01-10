@@ -46,12 +46,14 @@ namespace AElf.Kernel.SmartContract.Application
             {
                 dictionary = new ConcurrentDictionary<Hash, ConcurrentBag<IExecutive>>();
                 _executivePools[address] = dictionary;
+                Logger.LogDebug($"# Create Dictionary for {address.GetFormatted()} in GetPool");
             }
 
             if (!dictionary.TryGetValue(codeHash, out var pool))
             {
                 pool = new ConcurrentBag<IExecutive>();
                 dictionary[codeHash] = pool;
+                Logger.LogDebug($"# Create ConcurrentBag for {address.GetFormatted()} in GetPool");
             }
 
             return pool;
@@ -69,7 +71,7 @@ namespace AElf.Kernel.SmartContract.Application
             foreach (var codeHash in codeHashes)
             {
                 if (dictionary.TryRemove(codeHash, out _))
-                    Logger.LogDebug($"Removed executive for address {address} and code hash {codeHash}.");
+                    Logger.LogDebug($"# Removed executive for address {address} and code hash {codeHash}.");
             }
         }
     }

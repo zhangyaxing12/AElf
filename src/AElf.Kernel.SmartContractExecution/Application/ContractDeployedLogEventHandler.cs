@@ -58,6 +58,7 @@ namespace AElf.Kernel.SmartContractExecution.Application
                     BlockHash = block.GetHash(),
                     BlockHeight = block.Height
                 });
+            Logger.LogDebug($"# Added smartcontract registration of {eventData}");
         }
     }
 }

@@ -52,7 +52,7 @@ namespace AElf.Kernel.SmartContractExecution.Application
                     BlockHash = block.GetHash(),
                     BlockHeight = block.Height
                 });
-            Logger.LogDebug($"Updated contract {eventData}");
+            Logger.LogDebug($"# Updated contract {eventData}");
         }
     }
 }
