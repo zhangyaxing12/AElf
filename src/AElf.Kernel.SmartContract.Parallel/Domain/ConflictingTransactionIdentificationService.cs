@@ -62,7 +62,7 @@ namespace AElf.Kernel.SmartContract.Parallel.Domain
                 actual.ExceptWith(extracted);
                 if (actual.Count > 0)
                 {
-                    Logger.LogWarning($"Conflict keys:{string.Join(";", actual)}");
+                    Logger.LogWarning($"Conflict keys({txnWithResource.Transaction.GetHash()}):{string.Join(";", actual)}");
                     wrongTxnWithResources.Add(txnWithResource);
                 }
             }
