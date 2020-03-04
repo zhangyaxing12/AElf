@@ -6,9 +6,12 @@ var srcPath      = rootPath + "src/";
 var contractPath = rootPath + "contract/";
 var testPath     = rootPath + "test/";
 var distPath     = rootPath + "aelf-node/";
+var packagesPath = rootPath + "tmp/";
+var artifactsDir = MakeAbsolute(Directory("artifacts"));
 var solution     = rootPath + "AElf.sln";
 var srcProjects  = GetFiles(srcPath + "**/*.csproj");
 var contractProjects  = GetFiles(contractPath + "**/*.csproj");
+var packageVersion = "0.9.2";
 
 Task("Clean")
     .Description("clean up project cache")
@@ -50,7 +53,23 @@ Task("Build")
      
     DotNetCoreBuild(solution, buildSetting);
 });
-
+Task("Build-Release")
+    .Description("Compilation project")
+    .IsDependentOn("Clean")
+    .IsDependentOn("Restore")
+    .Does(() =>
+{
+    var buildSetting = new DotNetCoreBuildSettings{
+        NoRestore = true,
+        Configuration = "Release",
+        ArgumentCustomization = args => {                   
+            return args.Append("/clp:ErrorsOnly")                 
+                       .Append("/p:GeneratePackageOnBuild=false")   
+                       .Append("-v quiet");}      
+    };      
+     
+    DotNetCoreBuild(solution, buildSetting);
+});
 
 Task("Test-with-Codecov")
     .Description("operation test_with_codecov")
@@ -176,6 +195,62 @@ Task("Upload-Coverage-Azure")
     Codecov("./CodeCoverage/Cobertura.xml","$CODECOV_TOKEN");
 });
 
+Task("Pack")
+    .IsDependentOn("Build-Release")
+    .WithCriteria(() => HasArgument("pack"))
+    .Does(() =>
+    {
+        var settings = new DotNetCorePackSettings
+        {
+            Configuration = "Release",
+            NoBuild = true,
+            NoRestore = true,
+            IncludeSymbols = true,
+            OutputDirectory = packagesPath,
+            MSBuildSettings = new DotNetCoreMSBuildSettings()
+                .WithProperty("PackageVersion", packageVersion)
+                .WithProperty("Copyright", $"Copyright Contoso {DateTime.Now.Year}")
+        };
+
+
+         var list = GetFiles("./src/*/*.csproj")
+          .ToList();
+         list.AddRange(GetFiles("./contract/*/*.csproj")
+          .ToList());
+         list.ForEach(f => DotNetCorePack(f.FullPath, settings));
+    });
+Task("Publish-Nuget")
+    .IsDependentOn("Pack")
+    .Does(() => {
+        var pushSettings = new DotNetCoreNuGetPushSettings 
+        {
+            Source = "https://api.nuget.org/v3/index.json",
+            ApiKey = "NUGET_API_KEY"
+        };
+
+        var pkgs = GetFiles(artifactsDir + "*.nupkg");
+        foreach(var pkg in pkgs) 
+        {
+                Information($"Publishing \"{pkg}\".");
+                DotNetCoreNuGetPush(pkg.FullPath, pushSettings);
+        }
+    });
+Task("Publish-Myget")
+    .IsDependentOn("Pack")
+    .Does(() => {
+        var pushSettings = new DotNetCoreNuGetPushSettings 
+        {
+            Source = "https://www.myget.org/F/aelf-project/api/v3/index.json",
+            ApiKey = "MYGET_API_KEY"
+        };
+
+        var pkgs = GetFiles(artifactsDir + "*.nupkg");
+        foreach(var pkg in pkgs) 
+        {
+                Information($"Publishing \"{pkg}\".");
+                DotNetCoreNuGetPush(pkg.FullPath, pushSettings);
+        }
+    });
 Task("Default")
     .IsDependentOn("Run-Unit-Tests");
 
