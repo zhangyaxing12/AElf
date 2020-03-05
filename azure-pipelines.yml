@@ -12,5 +12,6 @@ jobs:
       version: 3.1.102
   - script: bash scripts/install_protobuf.sh
   - script: bash scripts/download_binary.sh
+  - script: echo $MYGET_API_KEY
   - script: bash build.sh -target=Publish-Myget
     displayName: 'Publish-Myget'
