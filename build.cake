@@ -9,8 +9,7 @@ var distPath     = rootPath + "aelf-node/";
 var solution     = rootPath + "AElf.sln";
 var srcProjects  = GetFiles(srcPath + "**/*.csproj");
 var contractProjects  = GetFiles(contractPath + "**/*.csproj");
-var packageVersion = "0.9.2";
-
+var mygetapikey = $
 Task("Clean")
     .Description("clean up project cache")
     .Does(() =>
@@ -201,7 +200,7 @@ Task("Publish-Nuget")
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
             Source = "https://api.nuget.org/v3/index.json",
-            ApiKey = nugetapikey
+            ApiKey = "$NUGET_API_KEY"
         };
 
         var pkgs = GetFiles("./nuget/*.nupkg");
@@ -217,7 +216,7 @@ Task("Publish-Myget")
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
             Source = "https://www.myget.org/F/aelf-project/api/v3/index.json",
-            ApiKey = mygetapikey
+            ApiKey = "$MYGET_API_KEY"
         };
 
         var pkgs = GetFiles("./nuget/*.nupkg");
