@@ -10,8 +10,6 @@ var solution     = rootPath + "AElf.sln";
 var srcProjects  = GetFiles(srcPath + "**/*.csproj");
 var contractProjects  = GetFiles(contractPath + "**/*.csproj");
 var packageVersion = "0.9.2";
-var nugetapikey = "$NUGET_API_KEY";
-var mygetapikey = "$MYGET_API_KEY";
 
 Task("Clean")
     .Description("clean up project cache")
