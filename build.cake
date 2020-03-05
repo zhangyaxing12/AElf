@@ -6,8 +6,6 @@ var srcPath      = rootPath + "src/";
 var contractPath = rootPath + "contract/";
 var testPath     = rootPath + "test/";
 var distPath     = rootPath + "aelf-node/";
-var packagesPath = rootPath + "tmp/";
-var artifactsDir = MakeAbsolute(Directory("artifacts"));
 var solution     = rootPath + "AElf.sln";
 var srcProjects  = GetFiles(srcPath + "**/*.csproj");
 var contractProjects  = GetFiles(contractPath + "**/*.csproj");
@@ -66,8 +64,11 @@ Task("Build-Release")
         Configuration = "Release",
         ArgumentCustomization = args => {                   
             return args.Append("/clp:ErrorsOnly")                 
-                       .Append("/p:GeneratePackageOnBuild=false")   
-                       .Append("-v quiet");}      
+                       .Append("-v quiet")
+                       .Append("-P:Version=VERSION")
+                       .Append("-P:Authors=AElf")
+                       .Append("-o ./nuget")
+;}      
     };      
      
     DotNetCoreBuild(solution, buildSetting);
@@ -196,33 +197,8 @@ Task("Upload-Coverage-Azure")
 {
     Codecov("./CodeCoverage/Cobertura.xml","$CODECOV_TOKEN");
 });
-
-Task("Pack")
-    .IsDependentOn("Build-Release")
-    .WithCriteria(() => HasArgument("pack"))
-    .Does(() =>
-    {
-        var settings = new DotNetCorePackSettings
-        {
-            Configuration = "Release",
-            NoBuild = true,
-            NoRestore = true,
-            IncludeSymbols = true,
-            OutputDirectory = packagesPath,
-            MSBuildSettings = new DotNetCoreMSBuildSettings()
-                .WithProperty("PackageVersion", packageVersion)
-                .WithProperty("Copyright", $"Copyright Contoso {DateTime.Now.Year}")
-        };
-
-
-         var list = GetFiles("./src/*/*.csproj")
-          .ToList();
-         list.AddRange(GetFiles("./contract/*/*.csproj")
-          .ToList());
-         list.ForEach(f => DotNetCorePack(f.FullPath, settings));
-    });
 Task("Publish-Nuget")
-    .IsDependentOn("Pack")
+    .IsDependentOn("Build-Release")
     .Does(() => {
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
@@ -230,7 +206,7 @@ Task("Publish-Nuget")
             ApiKey = nugetapikey
         };
 
-        var pkgs = GetFiles(artifactsDir + "*.nupkg");
+        var pkgs = GetFiles("./nuget/*.nupkg");
         foreach(var pkg in pkgs) 
         {
                 Information($"Publishing \"{pkg}\".");
@@ -238,7 +214,7 @@ Task("Publish-Nuget")
         }
     });
 Task("Publish-Myget")
-    .IsDependentOn("Pack")
+    .IsDependentOn("Build-Release")
     .Does(() => {
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
@@ -246,7 +222,7 @@ Task("Publish-Myget")
             ApiKey = mygetapikey
         };
 
-        var pkgs = GetFiles(artifactsDir + "*.nupkg");
+        var pkgs = GetFiles("./nuget/*.nupkg");
         foreach(var pkg in pkgs) 
         {
                 Information($"Publishing \"{pkg}\".");
