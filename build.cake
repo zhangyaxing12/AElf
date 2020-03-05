@@ -9,7 +9,6 @@ var distPath     = rootPath + "aelf-node/";
 var solution     = rootPath + "AElf.sln";
 var srcProjects  = GetFiles(srcPath + "**/*.csproj");
 var contractProjects  = GetFiles(contractPath + "**/*.csproj");
-var mygetapikey = $
 Task("Clean")
     .Description("clean up project cache")
     .Does(() =>
@@ -62,7 +61,7 @@ Task("Build-Release")
         ArgumentCustomization = args => {                   
             return args.Append("/clp:ErrorsOnly")                 
                        .Append("-v quiet")
-                       .Append("-P:Version=VERSION")
+                       .Append("-P:Version=0.9.2-18326")
                        .Append("-P:Authors=AElf")
                        .Append("-o ./nuget")
 ;}      
