@@ -214,7 +214,7 @@ Task("Publish-Myget")
     .Does(() => {
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
-            Sources = new [] { "https://www.myget.org/F/aelf-project-dev/api/v3/index.json" },
+            Source = "https://www.myget.org/F/aelf-project-dev/api/v3/index.json",
             ApiKey = apikey
         };
 
