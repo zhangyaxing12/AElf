@@ -33,16 +33,6 @@ Task("Restore")
 };
     DotNetCoreRestore(solution,restoreSettings);
 });
-Task("Restore-Myget")
-    .Description("restore project dependencies")
-    .Does(() =>
-{
-    DotNetCoreRestore("./AElf.sln", new DotNetCoreRestoreSettings
-    {
-        Verbosity = DotNetCoreVerbosity.Quiet,
-        Sources = new [] { "https://www.myget.org/F/aelf-project-dev/api/v3/index.json" }
-    });
-});
 Task("Build")
     .Description("Compilation project")
     .IsDependentOn("Clean")
@@ -62,7 +52,7 @@ Task("Build")
 Task("Build-Release")
     .Description("Compilation project")
     .IsDependentOn("Clean")
-    .IsDependentOn("Restore-Myget")
+    .IsDependentOn("Restore")
     .Does(() =>
 {
     var buildSetting = new DotNetCoreBuildSettings{
@@ -224,7 +214,7 @@ Task("Publish-Myget")
     .Does(() => {
         var pushSettings = new DotNetCoreNuGetPushSettings 
         {
-            Source = "https://www.myget.org/F/aelf-project-dev/api/v3/index.json",
+            Sources = new [] { "https://www.myget.org/F/aelf-project-dev/api/v3/index.json" },
             ApiKey = apikey
         };
 
