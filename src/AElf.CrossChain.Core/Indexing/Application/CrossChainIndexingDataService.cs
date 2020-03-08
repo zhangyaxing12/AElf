@@ -187,13 +187,14 @@ namespace AElf.CrossChain.Indexing.Application
 
         public async Task<bool> CheckExtraDataIsNeededAsync(Hash blockHash, long blockHeight, Timestamp timestamp)
         {
-            var pendingProposal = await GetPendingCrossChainIndexingProposalAsync(blockHash, blockHeight);
+            var pendingProposal = await GetPendingCrossChainIndexingProposalAsync(blockHash, blockHeight, timestamp);
             if (pendingProposal == null)
             {
                 Logger.LogDebug($"PendingProposal is null");
                 return false;
             }
-
+            
+            Logger.LogDebug($"Proposal Id  - {pendingProposal.ProposalId}");
             Logger.LogDebug($"ToBeReleased  - {pendingProposal.ToBeReleased}");
             Logger.LogDebug($"ExpiredTime  - {pendingProposal.ExpiredTime}");
             Logger.LogDebug($"Header time  - {timestamp}");
@@ -206,9 +207,9 @@ namespace AElf.CrossChain.Indexing.Application
             if (!_transactionPackingOptions.IsTransactionPackable)
                 return ByteString.Empty;
 
-            var pendingProposal = await GetPendingCrossChainIndexingProposalAsync(blockHash, blockHeight);
-
             var utcNow = TimestampHelper.GetUtcNow();
+            var pendingProposal = await GetPendingCrossChainIndexingProposalAsync(blockHash, blockHeight, utcNow);
+
             if (pendingProposal == null || pendingProposal.ExpiredTime.AddMilliseconds(500) <= utcNow)
             {
                 // propose new cross chain indexing data if pending proposal is null or expired 
@@ -280,9 +281,9 @@ namespace AElf.CrossChain.Indexing.Application
         }
 
         private async Task<GetPendingCrossChainIndexingProposalOutput> GetPendingCrossChainIndexingProposalAsync(
-            Hash blockHash, long blockHeight)
+            Hash blockHash, long blockHeight, Timestamp timestamp)
         {
-            var pendingProposal = await _readerFactory.Create(blockHash, blockHeight)
+            var pendingProposal = await _readerFactory.Create(blockHash, blockHeight, timestamp)
                 .GetPendingCrossChainIndexingProposal.CallAsync(new Empty());
             return pendingProposal;
         }
