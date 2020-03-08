@@ -8,11 +8,8 @@ using AElf.Types;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-
-namespace AElf.Kernel.TransactionPool.Application
+namespace AElf.Kernel.SmartContract.ExecutionPluginForMethodFee
 {
-    //TODO: not here
-
     public class SymbolListToPayTxFeeUpdatedLogEventProcessor : IBlockAcceptedLogEventProcessor
     {
         private readonly ISmartContractAddressService _smartContractAddressService;
