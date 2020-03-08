@@ -188,7 +188,17 @@ namespace AElf.CrossChain.Indexing.Application
         public async Task<bool> CheckExtraDataIsNeededAsync(Hash blockHash, long blockHeight, Timestamp timestamp)
         {
             var pendingProposal = await GetPendingCrossChainIndexingProposalAsync(blockHash, blockHeight);
-            return pendingProposal != null && pendingProposal.ToBeReleased && pendingProposal.ExpiredTime > timestamp;
+            if (pendingProposal == null)
+            {
+                Logger.LogDebug($"PendingProposal is null");
+                return false;
+            }
+
+            Logger.LogDebug($"ToBeReleased  - {pendingProposal.ToBeReleased}");
+            Logger.LogDebug($"ExpiredTime  - {pendingProposal.ExpiredTime}");
+            Logger.LogDebug($"Header time  - {timestamp}");
+            
+            return pendingProposal.ToBeReleased && pendingProposal.ExpiredTime > timestamp;
         }
 
         public async Task<ByteString> PrepareExtraDataForNextMiningAsync(Hash blockHash, long blockHeight)
