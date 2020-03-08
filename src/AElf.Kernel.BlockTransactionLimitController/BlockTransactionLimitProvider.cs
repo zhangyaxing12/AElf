@@ -12,34 +12,36 @@ namespace AElf.Kernel.BlockTransactionLimitController
         Task SetLimitAsync(Hash blockHash, int limit);
     }
 
-    public class BlockTransactionLimitProvider : BlockExecutedCacheProvider, IBlockTransactionLimitProvider,
+    public class BlockTransactionLimitProvider : BlockExecutedDataProvider, IBlockTransactionLimitProvider,
         ISingletonDependency
     {
         private const string BlockExecutedDataName = nameof(BlockTransactionLimit);
 
-        private readonly IBlockchainStateService _blockchainStateService;
+        private readonly ICachedBlockchainExecutedDataService<BlockTransactionLimit>
+            _cachedBlockchainExecutedDataService;
 
-        public BlockTransactionLimitProvider(IBlockchainStateService blockchainStateService)
+        public BlockTransactionLimitProvider(ICachedBlockchainExecutedDataService<BlockTransactionLimit>
+                cachedBlockchainExecutedDataService)
         {
-            _blockchainStateService = blockchainStateService;
+            _cachedBlockchainExecutedDataService = cachedBlockchainExecutedDataService;
         }
 
-        public async Task<int> GetLimitAsync(IChainContext chainContext)
+
+        public Task<int> GetLimitAsync(IChainContext chainContext)
         {
-            var key = GetBlockExecutedCacheKey();
-            var limit =
-                await _blockchainStateService.GetBlockExecutedDataAsync<BlockTransactionLimit>(chainContext, key);
-            return limit?.Value ?? 0;
+            var key = GetBlockExecutedDataKey();
+            var limit = _cachedBlockchainExecutedDataService.GetBlockExecutedData(chainContext, key);
+            return Task.FromResult(limit?.Value ?? 0);
         }
 
         public async Task SetLimitAsync(Hash blockHash, int limit)
         {
-            var key = GetBlockExecutedCacheKey();
+            var key = GetBlockExecutedDataKey();
             var blockTransactionLimit = new BlockTransactionLimit
             {
                 Value = limit
             };
-            await _blockchainStateService.AddBlockExecutedDataAsync(blockHash, key, blockTransactionLimit);
+            await _cachedBlockchainExecutedDataService.AddBlockExecutedDataAsync(blockHash, key, blockTransactionLimit);
         }
 
         protected override string GetBlockExecutedDataName()

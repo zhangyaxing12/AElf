@@ -15,29 +15,33 @@ namespace AElf.Kernel.SmartContract.Parallel.Domain
             IDictionary<Address, NonparallelContractCode> nonparallelContractCodes);
     }
 
-    public class NonparallelContractCodeProvider : BlockExecutedCacheProvider, INonparallelContractCodeProvider,
+    public class NonparallelContractCodeProvider : BlockExecutedDataProvider, INonparallelContractCodeProvider,
         ISingletonDependency
     {
         private const string BlockExecutedDataName = nameof(NonparallelContractCode);
 
-        private readonly IBlockchainStateService _blockchainStateService;
+        private readonly ICachedBlockchainExecutedDataService<NonparallelContractCode>
+            _cachedBlockchainExecutedDataService;
 
-        public NonparallelContractCodeProvider(IBlockchainStateService blockchainStateService)
+        public NonparallelContractCodeProvider(
+            ICachedBlockchainExecutedDataService<NonparallelContractCode> cachedBlockchainExecutedDataService)
         {
-            _blockchainStateService = blockchainStateService;
+            _cachedBlockchainExecutedDataService = cachedBlockchainExecutedDataService;
         }
 
-        public async Task<NonparallelContractCode> GetNonparallelContractCodeAsync(IChainContext chainContext, Address address)
+
+        public Task<NonparallelContractCode> GetNonparallelContractCodeAsync(IChainContext chainContext, Address address)
         {
-            var key = GetBlockExecutedCacheKey(address);
-            return await _blockchainStateService.GetBlockExecutedDataAsync<NonparallelContractCode>(chainContext, key);
+            var key = GetBlockExecutedDataKey(address);
+            var nonparallelContractCode = _cachedBlockchainExecutedDataService.GetBlockExecutedData(chainContext, key);
+            return Task.FromResult(nonparallelContractCode);
         }
 
         public async Task SetNonparallelContractCodeAsync(Hash blockHash, IDictionary<Address, NonparallelContractCode> nonparallelContractCodes)
         {
-            var dic = nonparallelContractCodes.ToDictionary(pair => GetBlockExecutedCacheKey(pair.Key),
+            var dic = nonparallelContractCodes.ToDictionary(pair => GetBlockExecutedDataKey(pair.Key),
                 pair => pair.Value);
-            await _blockchainStateService.AddBlockExecutedDataAsync(blockHash, dic);
+            await _cachedBlockchainExecutedDataService.AddBlockExecutedDataAsync(blockHash, dic);
         }
         
         protected override string GetBlockExecutedDataName()
